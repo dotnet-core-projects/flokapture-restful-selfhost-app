@@ -7,3 +7,5 @@
 .nuget
 packages
 **/App.config/**/*
+*.json
+*.bson
