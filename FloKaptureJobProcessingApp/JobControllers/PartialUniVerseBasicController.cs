@@ -74,9 +74,7 @@ namespace FloKaptureJobProcessingApp.JobControllers
                         if (string.IsNullOrEmpty(fileName)) continue;
                         if (fileName.Contains(".dll.config")) continue;
                         var extension = Path.GetExtension(currentFile);
-                        var extensionId = fileTypeReferences
-                            .First(e => e.FileExtension == extension || string.Equals(e.FileExtension, extension,
-                                            StringComparison.CurrentCultureIgnoreCase)).FileTypeReferenceId;
+                        var extensionId = fileTypeReferences.First(e => e.FileExtension == extension || string.Equals(e.FileExtension, extension, StringComparison.CurrentCultureIgnoreCase))._id;
                         var fileMaster = new FileMaster
                         {
                             FileName = fileName,

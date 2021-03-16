@@ -27,7 +27,7 @@ namespace BusinessLayer.DbEntities
 
         public override string ToString()
         {
-            return $"{_id} # {Name}";
+            return $"{Name} # {PhoneNumber}";
         }
     }
 }

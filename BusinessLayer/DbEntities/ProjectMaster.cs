@@ -21,7 +21,7 @@ namespace BusinessLayer.DbEntities
 
         [Required]
         [BsonRequired]
-        [StringLength(20, MinimumLength = 5, ErrorMessage = "Project Name must be between 5 to 20 characters")]
+        [StringLength(25, MinimumLength = 5, ErrorMessage = "Project Name must be between 5 to 20 characters")]
         public string ProjectName { get; set; }
         public string PhysicalPath { get; set; }
         public string Description { get; set; }

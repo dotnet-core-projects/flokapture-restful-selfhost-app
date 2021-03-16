@@ -11,6 +11,13 @@ namespace FloKaptureJobProcessingApp.Controllers
     {
         public BaseRepository<LanguageMaster> languageRepository = new GeneralService().BaseRepository<LanguageMaster>();
 
+        [HttpGet]
+        public ActionResult Get()
+        {
+            var languages = languageRepository.AllDocuments();
+            return Ok(languages);
+        }
+
         [Route("add-language")]
         [HttpPost]
         public ActionResult<LanguageMaster> AddLanguage([FromBody] LanguageMaster languageMaster)

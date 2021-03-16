@@ -1,9 +1,9 @@
-﻿using System;
-using System.Runtime.InteropServices;
-using BusinessLayer.BaseRepositories;
+﻿using BusinessLayer.BaseRepositories;
 using BusinessLayer.DbEntities;
 using BusinessLayer.EntityRepositories;
 using BusinessLayer.JobProcessingUtils.UniVerseBasic;
+using System;
+using System.Runtime.InteropServices;
 
 namespace FloKaptureJobProcessingApp.FloKaptureServices
 {
@@ -45,10 +45,7 @@ namespace FloKaptureJobProcessingApp.FloKaptureServices
 
         private void Dispose(bool disposing)
         {
-            if (disposing)
-            {
-            }
-            // free native resources if there are any.
+            if (!disposing) return;
             if (_nativeResource == IntPtr.Zero) return;
             Marshal.FreeHGlobal(_nativeResource);
             _nativeResource = IntPtr.Zero;
