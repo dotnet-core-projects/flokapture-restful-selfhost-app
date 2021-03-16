@@ -1,9 +1,9 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using BusinessLayer.BaseRepositories;
+﻿using BusinessLayer.BaseRepositories;
 using BusinessLayer.DbEntities;
 using FloKaptureJobProcessingApp.FloKaptureServices;
 using Microsoft.AspNetCore.Mvc;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace FloKaptureJobProcessingApp.Controllers
 {
@@ -11,8 +11,7 @@ namespace FloKaptureJobProcessingApp.Controllers
     [ApiController]
     public class OrganizationMasterController : ControllerBase
     {
-        public BaseRepository<OrganizationMaster> organizationRepository =
-            new GeneralService().BaseRepository<OrganizationMaster>();
+        private readonly BaseRepository<OrganizationMaster> _organizationRepository = new GeneralService().BaseRepository<OrganizationMaster>();
 
         [Route("add-organization")]
         [HttpPost]
@@ -20,14 +19,14 @@ namespace FloKaptureJobProcessingApp.Controllers
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            var addedOrganization = organizationRepository.AddDocument(organizationMaster).GetAwaiter().GetResult();
+            var addedOrganization = _organizationRepository.AddDocument(organizationMaster).GetAwaiter().GetResult();
             return Ok(addedOrganization);
         }
 
         [HttpGet]
         public ActionResult<List<OrganizationMaster>> Get()
         {
-            var list = organizationRepository.AllDocuments().ToList();
+            var list = _organizationRepository.AllDocuments().ToList();
             return Ok(list);
         }
 
@@ -35,7 +34,7 @@ namespace FloKaptureJobProcessingApp.Controllers
         [Route("{id}")]
         public ActionResult<OrganizationMaster> Get(string id)
         {
-            var organization = organizationRepository.FindDocument(d => d._id == id);
+            var organization = _organizationRepository.FindDocument(d => d._id == id);
             return Ok(organization);
         }
     }

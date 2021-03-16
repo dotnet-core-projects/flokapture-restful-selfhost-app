@@ -16,9 +16,10 @@ namespace FloKaptureJobRestfulSelfHostApp
     {
         private static void Main()
         {
+            Console.WriteLine($@"=======================================================================");
+            Console.WriteLine();
             var host = new WebHostBuilder()
                 .UseKestrel(options => options.ConfigureEndpoints())
-                // .UseKestrel().UseUrls("http://127.0.0.1:8181")
                 .UseStartup<StartUp>()
                 .Build();
 
@@ -30,18 +31,17 @@ namespace FloKaptureJobRestfulSelfHostApp
         public static void ConfigureEndpoints(this KestrelServerOptions options)
         {
             var environment = options.ApplicationServices.GetRequiredService<IHostingEnvironment>();
-            string projectPath = AppDomain.CurrentDomain.BaseDirectory
-                .Split(new[] { @"bin\" }, StringSplitOptions.None).First();
-            var configurationRoot = new ConfigurationBuilder().SetBasePath(projectPath)
-                .AddJsonFile("appsettings.json").Build();
-            var endpoints = configurationRoot.GetSection("HttpServer:EndPoints")
-                .GetChildren()
+            string projectPath = AppDomain.CurrentDomain.BaseDirectory.Split(new[] { @"bin\" }, StringSplitOptions.None).First();
+            var configurationRoot = new ConfigurationBuilder().SetBasePath(projectPath).AddJsonFile("appsettings.json").Build();
+            var endpoints = configurationRoot.GetSection("HttpServer:EndPoints").GetChildren()
                 .ToDictionary(section => section.Key, section =>
                 {
                     var endpoint = new EndPointConfiguration();
                     section.Bind(endpoint);
                     return endpoint;
                 });
+            Console.WriteLine($@"=== Adding configurations for protocols and ports to use. ===");
+            Console.WriteLine();
 
             foreach (var endpoint in endpoints)
             {
@@ -72,7 +72,7 @@ namespace FloKaptureJobRestfulSelfHostApp
                         listenOptions.UseHttps(certificate);
                     });
                 }
-            }
+            }              
         }
 
         private static X509Certificate2 LoadCertificate(EndPointConfiguration config, IHostingEnvironment environment)

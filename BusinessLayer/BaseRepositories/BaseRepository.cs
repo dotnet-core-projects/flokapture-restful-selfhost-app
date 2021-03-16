@@ -10,14 +10,16 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 // ReSharper disable StaticMemberInGenericType
 
 namespace BusinessLayer.BaseRepositories
 {
-    public class BaseRepository<TSource> : MongoCollectionBase<TSource>, IBaseRepository<TSource>, IRepository<TSource> where TSource : EntityBase
+    public class BaseRepository<TSource> : MongoCollectionBase<TSource>, IBaseRepository<TSource>, IRepository<TSource>, IDisposable where TSource : EntityBase
     {
+        private IntPtr _nativeResource = Marshal.AllocHGlobal(100);
         public static string ProjectPath = AppDomain.CurrentDomain.BaseDirectory.Split(new[] { @"bin\" }, StringSplitOptions.None).First();
         public static IConfigurationRoot ConfigurationRoot = new ConfigurationBuilder().SetBasePath(ProjectPath).AddJsonFile("appsettings.json").Build();
         private static readonly string MongoDb = ConfigurationRoot.GetSection("Database:Database").Value;
@@ -42,9 +44,9 @@ namespace BusinessLayer.BaseRepositories
             }             
         };
         */
-        public static string connectionString = $"mongodb://{ConfigurationRoot.GetSection("Database:User").Value}:{ConfigurationRoot.GetSection("Database:Pwd").Value}@{ConfigurationRoot.GetSection("Database:Host").Value}:{int.Parse(ConfigurationRoot.GetSection("Database:Port").Value)}/?ssl=true&sslVerifyCertificate=false";
-        public static MongoClientSettings clientSettings = MongoClientSettings.FromUrl(new MongoUrl(connectionString));
-        public MongoClient MongoClient = new MongoClient(clientSettings);
+        public static string ConnectionString = $"mongodb://{ConfigurationRoot.GetSection("Database:User").Value}:{ConfigurationRoot.GetSection("Database:Pwd").Value}@{ConfigurationRoot.GetSection("Database:Host").Value}:{int.Parse(ConfigurationRoot.GetSection("Database:Port").Value)}/?ssl=true&sslVerifyCertificate=false";
+        public static MongoClientSettings ClientSettings = MongoClientSettings.FromUrl(new MongoUrl(ConnectionString));
+        public MongoClient MongoClient = new MongoClient(ClientSettings);
 
         // If need to compulsory override, then make method as abstract
         public virtual void CreateIndex(IndexKeysDefinitionBuilder<TSource> definitionBuilder)
@@ -326,8 +328,7 @@ namespace BusinessLayer.BaseRepositories
             return MongoCollection.AsQueryable().Count();
         }
 
-        public override void InsertMany(IEnumerable<TSource> documents, InsertManyOptions options = null,
-            CancellationToken cancellationToken = new CancellationToken())
+        public override void InsertMany(IEnumerable<TSource> documents, InsertManyOptions options = null, CancellationToken cancellationToken = new CancellationToken())
         {
             MongoCollection.InsertMany(documents, options, cancellationToken);
         }
@@ -348,33 +349,28 @@ namespace BusinessLayer.BaseRepositories
                 BulkWrite(null, requests, options), cancellationToken).ConfigureAwait(false);
         }
 
-        public override async Task<long> CountDocumentsAsync(FilterDefinition<TSource> filter, CountOptions options = null,
-            CancellationToken cancellationToken = new CancellationToken())
+        public override async Task<long> CountDocumentsAsync(FilterDefinition<TSource> filter, CountOptions options = null, CancellationToken cancellationToken = new CancellationToken())
         {
             return await Task.Factory.StartNew(() => MongoCollection.CountDocuments(filter, options), cancellationToken).ConfigureAwait(false);
         }
 
         [Obsolete]
-        public override async Task<long> CountAsync(FilterDefinition<TSource> filter, CountOptions options = null,
-            CancellationToken cancellationToken = new CancellationToken())
+        public override async Task<long> CountAsync(FilterDefinition<TSource> filter, CountOptions options = null, CancellationToken cancellationToken = new CancellationToken())
         {
             return await MongoCollection.Find(filter).CountDocumentsAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        public override async Task<IAsyncCursor<TField>> DistinctAsync<TField>(FieldDefinition<TSource, TField> field, FilterDefinition<TSource> filter, DistinctOptions options = null,
-            CancellationToken cancellationToken = new CancellationToken())
+        public override async Task<IAsyncCursor<TField>> DistinctAsync<TField>(FieldDefinition<TSource, TField> field, FilterDefinition<TSource> filter, DistinctOptions options = null, CancellationToken cancellationToken = new CancellationToken())
         {
             return await Task.Factory.StartNew(() => Distinct(field, filter, options), cancellationToken).ConfigureAwait(false);
         }
 
-        public override Task<IAsyncCursor<TProjection>> FindAsync<TProjection>(IClientSessionHandle session, FilterDefinition<TSource> filter, FindOptions<TSource, TProjection> options = null,
-            CancellationToken cancellationToken = new CancellationToken())
+        public override Task<IAsyncCursor<TProjection>> FindAsync<TProjection>(IClientSessionHandle session, FilterDefinition<TSource> filter, FindOptions<TSource, TProjection> options = null, CancellationToken cancellationToken = new CancellationToken())
         {
             return MongoCollection.FindAsync(session, filter, options, cancellationToken); //.GetAwaiter().GetResult();
         }
 
-        public override IAsyncCursor<TProjection> FindSync<TProjection>(IClientSessionHandle session, FilterDefinition<TSource> filter, FindOptions<TSource, TProjection> options = null,
-            CancellationToken cancellationToken = new CancellationToken())
+        public override IAsyncCursor<TProjection> FindSync<TProjection>(IClientSessionHandle session, FilterDefinition<TSource> filter, FindOptions<TSource, TProjection> options = null, CancellationToken cancellationToken = new CancellationToken())
         {
             // TODO: Needs to check whether we can implement FindWithLookup method here...
             /*
@@ -447,6 +443,25 @@ namespace BusinessLayer.BaseRepositories
         public override IMongoIndexManager<TSource> Indexes => MongoCollection.Indexes;
 
         public override MongoCollectionSettings Settings => MongoCollection.Settings;
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        ~BaseRepository()
+        {
+            Dispose(false);
+        }
+
+        private void Dispose(bool disposing)
+        {
+            if (!disposing) return;
+            if (_nativeResource == IntPtr.Zero) return;
+            Marshal.FreeHGlobal(_nativeResource);
+            _nativeResource = IntPtr.Zero;
+        }
     }
 
     public class LogMongoEvents : IEventSubscriber

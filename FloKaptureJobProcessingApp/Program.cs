@@ -10,6 +10,7 @@ namespace FloKaptureJobProcessingApp
             CreateWebHostBuilder(args).Build().Run();
         }
 
-        public static IWebHostBuilder CreateWebHostBuilder(string[] args) => WebHost.CreateDefaultBuilder(args).UseStartup<StartUp>();
+        public static IWebHostBuilder CreateWebHostBuilder(string[] args) => 
+            WebHost.CreateDefaultBuilder(args).UseStartup<StartUp>();
     }
 }

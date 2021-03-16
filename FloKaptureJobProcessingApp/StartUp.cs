@@ -40,19 +40,21 @@ namespace FloKaptureJobProcessingApp
                 .SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
 
         }
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
+        public void Configure(IApplicationBuilder app /* , IHostingEnvironment env, ILoggerFactory loggerFactory */)
         {
+            /*
             if (env.IsDevelopment())
                 app.UseDeveloperExceptionPage();
             else
                 app.UseHsts();
+            */
 
             app.UseCors();
             app.UseMvcWithDefaultRoute();
             app.UseHttpsRedirection();
 
-            loggerFactory.AddConsole();
-            loggerFactory.AddDebug();
+            // loggerFactory.AddConsole();
+            // loggerFactory.AddDebug();
 
             app.UseMvc(routes =>
             {
@@ -66,10 +68,8 @@ namespace FloKaptureJobProcessingApp
         }
         public void ConfigureJsonOptions(MvcJsonOptions jsonOptions)
         {
-            string projectPath = AppDomain.CurrentDomain.BaseDirectory
-                .Split(new[] { @"bin\" }, StringSplitOptions.None).First();
-            var configurationRoot = new ConfigurationBuilder().SetBasePath(projectPath)
-                .AddJsonFile("appsettings.json").Build();
+            string projectPath = AppDomain.CurrentDomain.BaseDirectory.Split(new[] { @"bin\" }, StringSplitOptions.None).First();
+            var configurationRoot = new ConfigurationBuilder().SetBasePath(projectPath).AddJsonFile("appsettings.json").Build();
             string dateFormat = configurationRoot.GetSection("DateFormat").Value;
             jsonOptions.SerializerSettings.Converters.Add(new IsoDateTimeConverter
             {

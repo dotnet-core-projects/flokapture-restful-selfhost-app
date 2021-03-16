@@ -31,29 +31,26 @@ namespace FloKaptureJobProcessingApp.Controllers
             if (!ModelState.IsValid) return BadRequest(ModelState);
             try
             {
-                var isExists = _floKaptureService.ProjectMasterRepository
-                    .FindDocument(d => d.ProjectName == projectMaster.ProjectName);
-                if (isExists is null) return Conflict($"Project with name: {projectMaster.ProjectName} already exists");
+                var isExists = _floKaptureService.ProjectMasterRepository.FindDocument(d => d.ProjectName == projectMaster.ProjectName);
+                if (isExists != null) return Conflict($"Project with name: {projectMaster.ProjectName} already exists");
 
-                var extractPath = new GeneralService().BaseRepository<ProductConfig>()
-                    .FindDocument(f => f.PropertyName == "Project Extract Path").Value;
+                var extractPath = new GeneralService().BaseRepository<ProductConfig>().FindDocument(f => f.PropertyName == "Project Extract Path").Value;
                 var isExistsOrCreated = ProductHelper.CheckAndCreateDir(extractPath);
                 if (!isExistsOrCreated) return Unauthorized();
 
-                var zipPath = new GeneralService().BaseRepository<ProductConfig>()
-                    .FindDocument(f => f.PropertyName == "Project Upload Path").Value;
+                var zipPath = new GeneralService().BaseRepository<ProductConfig>().FindDocument(f => f.PropertyName == "Project Upload Path").Value;
                 string physicalZipPath = Path.Combine(zipPath, projectMaster.PhysicalPath);
-                bool isFileReady = ProductHelper.IsFileReady(physicalZipPath);
-                if (!isFileReady) return BadRequest("Zip File might be opened by other program and " +
-                                                    "can not access it for process. Try again");
 
+                bool isFileReady = ProductHelper.IsFileReady(physicalZipPath);
+                if (!isFileReady) return BadRequest("Zip File might be opened by other program and can not access it for process. Try again");
+                string completeExtractPath = Path.Combine(extractPath, Path.GetFileNameWithoutExtension(physicalZipPath));
                 using (var zipFileToOpen = new FileStream(physicalZipPath, FileMode.Open))
                 {
                     using (var archive = new ZipArchive(zipFileToOpen, ZipArchiveMode.Update))
                     {
                         try
                         {
-                            archive.ExtractToDirectory(extractPath);
+                            archive.ExtractToDirectory(completeExtractPath);
                         }
                         catch (Exception exception)
                         {
@@ -70,8 +67,8 @@ namespace FloKaptureJobProcessingApp.Controllers
                     }
                 }
 
-                var fileName = Path.GetFileNameWithoutExtension(projectMaster.PhysicalPath);
-                projectMaster.PhysicalPath = Path.Combine(extractPath, fileName);
+                // var fileName = Path.GetFileNameWithoutExtension(physicalZipPath);
+                projectMaster.PhysicalPath = completeExtractPath;
 
                 var isValidated = _floKaptureService.UniVerseBasicUtils.UniVerseUtils.ValidateDirStructure(projectMaster);
                 if (!isValidated) return BadRequest(projectMaster);
@@ -85,8 +82,7 @@ namespace FloKaptureJobProcessingApp.Controllers
                 projectMaster.Size = directorySizeInMb;
                 projectMaster.Active = true;
 
-                var addedProject = _floKaptureService.ProjectMasterRepository.AddDocument(projectMaster)
-                    .GetAwaiter().GetResult();
+                var addedProject = _floKaptureService.ProjectMasterRepository.AddDocument(projectMaster).GetAwaiter().GetResult();
 
                 return Ok(addedProject);
             }
