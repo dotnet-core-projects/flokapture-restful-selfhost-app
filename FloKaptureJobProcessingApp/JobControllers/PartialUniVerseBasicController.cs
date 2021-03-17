@@ -53,7 +53,7 @@ namespace FloKaptureJobProcessingApp.JobControllers
         {
             var entitiesToExcludeService = new GeneralService().BaseRepository<EntitiesToExclude>();
             var fileTypeReferences = _floKaptureService.FileTypeReferenceRepository
-                .ListAllDocuments(p => p.LanguageId == projectMaster.LanguageId).ToList();
+                .GetAllListItems(p => p.LanguageId == projectMaster.LanguageId).ToList();
             var directoryList = new List<string> { projectMaster.PhysicalPath };
             var regExCommented = new Regex(@"^\/\/\*|^\/\*|^\*|^\'", RegexOptions.CultureInvariant);
             foreach (var directory in directoryList)

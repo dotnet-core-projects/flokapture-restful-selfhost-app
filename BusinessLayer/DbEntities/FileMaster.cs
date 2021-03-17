@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
@@ -7,6 +8,7 @@ using Newtonsoft.Json;
 
 namespace BusinessLayer.DbEntities
 {
+    [DebuggerStepThrough]
     public class FileMaster : EntityBase
     {
         [BsonRepresentation(BsonType.ObjectId)]

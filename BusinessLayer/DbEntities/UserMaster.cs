@@ -1,8 +1,10 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 using Newtonsoft.Json;
 
 namespace BusinessLayer.DbEntities
 {
+    [DebuggerStepThrough]
     public class UserMaster : EntityBase
     {
         public string UserName { get; set; }

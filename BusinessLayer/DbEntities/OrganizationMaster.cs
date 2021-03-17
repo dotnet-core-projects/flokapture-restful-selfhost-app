@@ -1,9 +1,11 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
+using System.Diagnostics;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace BusinessLayer.DbEntities
 {
+    [DebuggerStepThrough]
     public class OrganizationMaster : EntityBase
     {
         [Required]

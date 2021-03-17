@@ -15,7 +15,7 @@ namespace FloKaptureJobProcessingApp.Controllers
         [HttpGet]
         public ActionResult<List<BaseCommandReference>> Get()
         {
-            var list = _baseCommandReference.ListAllDocuments();
+            var list = _baseCommandReference.GetAllListItems();
             return Ok(list);
         }
 

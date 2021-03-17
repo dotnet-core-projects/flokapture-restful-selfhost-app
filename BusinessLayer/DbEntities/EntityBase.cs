@@ -1,11 +1,13 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
+using System.Diagnostics;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using Newtonsoft.Json;
 
 namespace BusinessLayer.DbEntities
 {
+    [DebuggerStepThrough]
     public abstract class EntityBase
     {
         private ObjectId _objectId;

@@ -14,7 +14,7 @@ namespace FloKaptureJobProcessingApp.Controllers
         [HttpGet]
         public ActionResult Get()
         {
-            var languages = languageRepository.AllDocuments();
+            var languages = languageRepository.GetAllItems();
             return Ok(languages);
         }
 

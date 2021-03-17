@@ -29,7 +29,7 @@ namespace FloKaptureJobProcessingApp.Controllers
                     .ExtractBaseCommandId(new LineDetails());
                 Console.WriteLine(baseCmd);
 
-                var languages = FloKaptureService.LanguageMasterRepository.AllDocuments().ToList();
+                var languages = FloKaptureService.LanguageMasterRepository.GetAllItems().ToList();
                 Console.WriteLine(languages);
              
                 var allFiles = FloKaptureService.FileMasterRepository.Aggregate().Limit(10).ToList();
@@ -83,7 +83,7 @@ namespace FloKaptureJobProcessingApp.Controllers
         [HttpGet]
         public IActionResult GetUnion()
         {
-            var fileMaster = FloKaptureService.FileMasterRepository.MongoCollection.Aggregate()
+            var fileMaster = FloKaptureService.FileMasterRepository.Aggregate()
                 .Match(
                     FloKaptureService.FileMasterRepository.Filter.Regex(d => d.FileName,
                         new BsonRegularExpression("BP", "ig")) &

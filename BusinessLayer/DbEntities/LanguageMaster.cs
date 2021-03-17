@@ -1,8 +1,10 @@
-﻿using MongoDB.Bson.Serialization.Attributes;
+﻿using System.Diagnostics;
+using MongoDB.Bson.Serialization.Attributes;
 using Newtonsoft.Json;
 
 namespace BusinessLayer.DbEntities
 {
+    [DebuggerStepThrough]
     public class LanguageMaster : EntityBase
     {
         [BsonRequired]

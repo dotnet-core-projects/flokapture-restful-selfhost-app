@@ -1,5 +1,8 @@
-﻿namespace BusinessLayer.DbEntities
+﻿using System.Diagnostics;
+
+namespace BusinessLayer.DbEntities
 {
+    [DebuggerStepThrough]
     public class EntityLookup
     {
         public string From { get; set; }

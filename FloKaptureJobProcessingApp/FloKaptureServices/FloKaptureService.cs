@@ -3,10 +3,12 @@ using BusinessLayer.DbEntities;
 using BusinessLayer.EntityRepositories;
 using BusinessLayer.JobProcessingUtils.UniVerseBasic;
 using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace FloKaptureJobProcessingApp.FloKaptureServices
 {
+    [DebuggerStepThrough]
     public class FloKaptureService : IFloKaptureService
     {
         private IntPtr _nativeResource = Marshal.AllocHGlobal(100);

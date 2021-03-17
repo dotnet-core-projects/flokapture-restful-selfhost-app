@@ -43,7 +43,7 @@ namespace FloKaptureJobProcessingApp.JobControllers
             var projectMaster = _floKaptureService.ProjectMasterRepository.GetById(projectId);
             if (projectMaster == null) return BadRequest($@"Project with id {projectId} not found!");
             var generalService = new GeneralService().BaseRepository<FileTypeReference>();
-            var extensionReferences = generalService.ListAllDocuments(d => d.LanguageId == projectMaster.LanguageId);
+            var extensionReferences = generalService.GetAllListItems(d => d.LanguageId == projectMaster.LanguageId);
             var csFiles = Directory.GetFiles(projectMaster.PhysicalPath, "*.cs", SearchOption.AllDirectories).ToList();
             foreach (var csFile in csFiles)
             {
@@ -88,7 +88,7 @@ namespace FloKaptureJobProcessingApp.JobControllers
                     var jsonData = JsonConvert.DeserializeObject<Dictionary<string, List<MethodReferenceData>>>(rawJson);
                     */
                     string slnDirPath = projectMaster.PhysicalPath;
-                    var allCsFiles = _floKaptureService.FileMasterRepository.ListAllDocuments(d => d.ProjectId == projectMaster._id);
+                    var allCsFiles = _floKaptureService.FileMasterRepository.GetAllListItems(d => d.ProjectId == projectMaster._id);
                     workspace.WorkspaceFailed += (o, we) => Console.WriteLine(we.Diagnostic.Message);
                     var solutionFiles = Directory.GetFiles(slnDirPath, "*.sln", SearchOption.TopDirectoryOnly).ToList();
                     var referenceList = new Dictionary<string, List<MethodReferenceData>>();
@@ -178,7 +178,7 @@ namespace FloKaptureJobProcessingApp.JobControllers
 
             var methodDetailsService = new GeneralService().BaseRepository<MethodDetails>();
             var fieldOrPropertyService = new GeneralService().BaseRepository<FieldAndPropertyDetails>();
-            var allCsFiles = _floKaptureService.FileMasterRepository.ListAllDocuments(f => f.ProjectId == projectId && f.FileTypeReferenceId == "60507f66591cfa72c53a859e");
+            var allCsFiles = _floKaptureService.FileMasterRepository.GetAllListItems(f => f.ProjectId == projectId && f.FileTypeReferenceId == "60507f66591cfa72c53a859e");
             foreach (var fileMaster in allCsFiles)
             {
                 if (!System.IO.File.Exists(fileMaster.FilePath)) continue;

@@ -1,7 +1,9 @@
-﻿using MongoDB.Bson.Serialization.Attributes;
+﻿using System.Diagnostics;
+using MongoDB.Bson.Serialization.Attributes;
 
 namespace BusinessLayer.DbEntities
 {
+    [DebuggerStepThrough]
     public class BaseCommandReference : EntityBase
     {
         [BsonRequired]

@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Diagnostics;
 using CsvHelper.Configuration;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
@@ -7,6 +8,7 @@ using Newtonsoft.Json;
 
 namespace BusinessLayer.DbEntities
 {
+    [DebuggerStepThrough]
     public class UniVerseDataDictionary : EntityBase
     {
         [BsonRepresentation(BsonType.ObjectId)]
