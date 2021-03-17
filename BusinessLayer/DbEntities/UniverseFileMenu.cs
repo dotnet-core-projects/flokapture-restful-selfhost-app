@@ -1,10 +1,12 @@
 using System.ComponentModel.DataAnnotations;
+using System.Diagnostics;
 using System.Text.RegularExpressions;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace BusinessLayer.DbEntities
 {
+    [DebuggerStepThrough]
     public class UniverseFileMenu : EntityBase
     {
         private string _menuTitle;

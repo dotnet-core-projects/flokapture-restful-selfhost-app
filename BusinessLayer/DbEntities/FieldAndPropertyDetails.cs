@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
 using MongoDB.Bson;
@@ -8,6 +9,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace BusinessLayer.DbEntities
 {
+    [DebuggerStepThrough]
     public class FieldAndPropertyDetails : EntityBase
     {
         [BsonRepresentation(BsonType.ObjectId)]

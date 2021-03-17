@@ -26,7 +26,7 @@ namespace FloKaptureJobProcessingApp.Controllers
         [HttpGet]
         public ActionResult<List<OrganizationMaster>> Get()
         {
-            var list = _organizationRepository.AllDocuments().ToList();
+            var list = _organizationRepository.GetAllItems().ToList();
             return Ok(list);
         }
 

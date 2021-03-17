@@ -1,8 +1,10 @@
+using System.Diagnostics;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace BusinessLayer.DbEntities
 {
+    [DebuggerStepThrough]
     public class EntitiesToExclude : EntityBase
     {
         [BsonRepresentation(BsonType.ObjectId)]

@@ -1,12 +1,12 @@
-﻿using System;
+﻿using BusinessLayer.DbEntities;
+using MongoDB.Bson;
+using MongoDB.Driver;
+using MongoDB.Driver.Core.Events;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
-using BusinessLayer.DbEntities;
-using MongoDB.Bson;
-using MongoDB.Driver;
-using MongoDB.Driver.Core.Events;
 
 namespace BusinessLayer.BaseRepositories
 {
@@ -14,7 +14,7 @@ namespace BusinessLayer.BaseRepositories
     {
         void CreateIndex(IndexKeysDefinitionBuilder<TSource> definitionBuilder);
 
-        IMongoDatabase MongoDatabase { get; }
+        // IMongoDatabase MongoDatabase { get; }  
 
         IndexKeysDefinitionBuilder<TSource> IndexKeys { get; }
 
@@ -28,7 +28,7 @@ namespace BusinessLayer.BaseRepositories
         /// <summary>
         /// 
         /// </summary>
-        IMongoCollection<TSource> MongoCollection { get; }
+        // IMongoCollection<TSource> MongoCollection { get; }
 
         /// <summary>
         /// This is custom aggregate with lookup for all navigation and nested navigation properties.
@@ -62,21 +62,21 @@ namespace BusinessLayer.BaseRepositories
         ///     Returns the IEnumerable of TSource which is Generic input type
         /// </summary>
         /// <returns></returns>
-        IEnumerable<TSource> AllDocuments();
+        IEnumerable<TSource> GetAllItems();
 
         /// <summary>
         ///     Returns the IEnumerable of TSource which is Generic input type
         /// </summary>
         /// <returns></returns>
-        IEnumerable<T> AllDocumentsOf<T>(Expression<Func<T, bool>> expression) where T : EntityBase;
+        IEnumerable<T> GetAllItemsOf<T>(Expression<Func<T, bool>> expression) where T : EntityBase;
 
         /// <summary>
         ///     Returns the IEnumerable of TSource which is Generic input type
         /// </summary>
         /// <returns></returns>
-        List<TSource> ListAllDocuments();
+        List<TSource> GetAllListItems();
 
-        List<TSource> ListAllDocuments(Expression<Func<TSource, bool>> expression);
+        List<TSource> GetAllListItems(Expression<Func<TSource, bool>> expression);
 
         /// <summary>
         ///     Returns the int

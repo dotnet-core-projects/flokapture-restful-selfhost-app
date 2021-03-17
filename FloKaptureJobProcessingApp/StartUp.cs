@@ -1,22 +1,23 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Builder;
+// using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+// using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Serialization;
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Net.Http.Formatting;
 using System.Net.Http.Headers;
 using System.Reflection;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Filters;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
-using Newtonsoft.Json.Serialization;
-using IHostingEnvironment = Microsoft.AspNetCore.Hosting.IHostingEnvironment;
+// using IHostingEnvironment = Microsoft.AspNetCore.Hosting.IHostingEnvironment;
 
 namespace FloKaptureJobProcessingApp
 {
@@ -113,6 +114,7 @@ namespace FloKaptureJobProcessingApp
         }
     }
 
+    [DebuggerStepThrough]
     internal class DictionaryAsArrayResolver : DefaultContractResolver
     {
         protected override JsonContract CreateContract(Type objectType)
@@ -122,10 +124,10 @@ namespace FloKaptureJobProcessingApp
                 ? CreateArrayContract(objectType)
                 : base.CreateContract(objectType);
         }
+        [DebuggerStepThrough]
         protected override IList<JsonProperty> CreateProperties(Type type, MemberSerialization memberSerialization)
         {
-            return type.GetProperties()
-                .Select(p =>
+            return type.GetProperties().Select(p =>
                 {
                     var jp = CreateProperty(p, memberSerialization);
                     jp.ValueProvider = new NullToEmptyStringValueProvider(p);
@@ -134,6 +136,7 @@ namespace FloKaptureJobProcessingApp
         }
     }
 
+    [DebuggerStepThrough]
     public class NullToEmptyStringValueProvider : IValueProvider
     {
         private readonly PropertyInfo _memberInfo;
@@ -141,18 +144,22 @@ namespace FloKaptureJobProcessingApp
         {
             _memberInfo = memberInfo;
         }
+
+        [DebuggerStepThrough]
         public object GetValue(object target)
         {
             var result = _memberInfo.GetValue(target);
             if (_memberInfo.PropertyType == typeof(string) && result == null) result = "";
             return result;
         }
+        [DebuggerStepThrough]
         public void SetValue(object target, object value)
         {
             _memberInfo.SetValue(target, value);
         }
     }
 
+    [DebuggerStepThrough]
     public class BrowserJsonFormatter : JsonMediaTypeFormatter
     {
         public BrowserJsonFormatter()

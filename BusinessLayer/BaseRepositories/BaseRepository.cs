@@ -46,16 +46,18 @@ namespace BusinessLayer.BaseRepositories
         */
         public static string ConnectionString = $"mongodb://{ConfigurationRoot.GetSection("Database:User").Value}:{ConfigurationRoot.GetSection("Database:Pwd").Value}@{ConfigurationRoot.GetSection("Database:Host").Value}:{int.Parse(ConfigurationRoot.GetSection("Database:Port").Value)}/?ssl=true&sslVerifyCertificate=false";
         public static MongoClientSettings ClientSettings = MongoClientSettings.FromUrl(new MongoUrl(ConnectionString));
-        public MongoClient MongoClient = new MongoClient(ClientSettings);
+        public static readonly MongoClient MongoClient = new MongoClient(ClientSettings);
+        public static readonly IMongoDatabase MongoDatabase = MongoClient.GetDatabase(MongoDb);
+        public static IMongoCollection<TSource> MongoCollection = MongoDatabase.GetCollection<TSource>(typeof(TSource).Name);
 
         // If need to compulsory override, then make method as abstract
         public virtual void CreateIndex(IndexKeysDefinitionBuilder<TSource> definitionBuilder)
         {
         }
 
-        public IMongoCollection<TSource> MongoCollection => MongoDatabase.GetCollection<TSource>(typeof(TSource).Name);
+        // public IMongoCollection<TSource> MongoCollection => MongoDatabase.GetCollection<TSource>(typeof(TSource).Name);
 
-        public IMongoDatabase MongoDatabase => MongoClient.GetDatabase(MongoDb);
+        // public IMongoDatabase MongoDatabase => MongoClient.GetDatabase(MongoDb);
 
         public IndexKeysDefinitionBuilder<TSource> IndexKeys => Builders<TSource>.IndexKeys;
 
@@ -110,21 +112,21 @@ namespace BusinessLayer.BaseRepositories
             return MongoCollection.Aggregate().Group(projectionDefinition).As<TSource>(); // .BsonDocLookup();
         }
 
-        public virtual IEnumerable<TSource> AllDocuments()
+        public virtual IEnumerable<TSource> GetAllItems()
         {
             return MongoCollection.AsQueryable().AsEnumerable();
         }
 
-        public virtual IEnumerable<T> AllDocumentsOf<T>(Expression<Func<T, bool>> expression) where T : EntityBase
+        public virtual IEnumerable<T> GetAllItemsOf<T>(Expression<Func<T, bool>> expression) where T : EntityBase
         {
             return MongoDatabase.GetCollection<T>(typeof(T).Name).AsQueryable().Where(expression).AsEnumerable();
         }
 
-        public List<TSource> ListAllDocuments()
+        public List<TSource> GetAllListItems()
         {
             return MongoCollection.AsQueryable().ToList();
         }
-        public virtual List<TSource> ListAllDocuments(Expression<Func<TSource, bool>> expression)
+        public virtual List<TSource> GetAllListItems(Expression<Func<TSource, bool>> expression)
         {
             return MongoCollection.AsQueryable().Where(expression).ToList();
         }

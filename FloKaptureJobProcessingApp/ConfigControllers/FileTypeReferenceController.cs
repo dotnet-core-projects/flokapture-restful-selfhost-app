@@ -24,7 +24,7 @@ namespace FloKaptureJobProcessingApp.ConfigControllers
         [HttpGet]
         public ActionResult<List<FileTypeReference>> Get()
         {
-            var list = FileTypeReferenceRepository.ListAllDocuments();
+            var list = FileTypeReferenceRepository.GetAllListItems();
             return Ok(list);
         }
     }

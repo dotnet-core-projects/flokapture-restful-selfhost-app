@@ -1,7 +1,9 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace BusinessLayer.DbEntities
 {
+    [DebuggerStepThrough]
     public class UniverseDescriptor : EntityBase
     {
         public int DescriptorId { get; set; }

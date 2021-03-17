@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using System.Text.RegularExpressions;
@@ -6,6 +7,7 @@ using Newtonsoft.Json;
 
 namespace BusinessLayer.DbEntities
 {
+    [DebuggerStepThrough]
     public class MethodDetails : EntityBase
     {
         [BsonRepresentation(BsonType.ObjectId)]

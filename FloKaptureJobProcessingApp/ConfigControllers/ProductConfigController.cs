@@ -24,7 +24,7 @@ namespace FloKaptureJobProcessingApp.ConfigControllers
         [HttpGet]
         public ActionResult<List<ProductConfig>> Get()
         {
-            var list = ProductConfigRepository.ListAllDocuments();
+            var list = ProductConfigRepository.GetAllListItems();
             return Ok(list);
         }
     }
