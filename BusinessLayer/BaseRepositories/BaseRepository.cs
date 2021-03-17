@@ -120,11 +120,10 @@ namespace BusinessLayer.BaseRepositories
             return MongoDatabase.GetCollection<T>(typeof(T).Name).AsQueryable().Where(expression).AsEnumerable();
         }
 
-        public virtual List<TSource> ListAllDocuments()
+        public List<TSource> ListAllDocuments()
         {
             return MongoCollection.AsQueryable().ToList();
         }
-
         public virtual List<TSource> ListAllDocuments(Expression<Func<TSource, bool>> expression)
         {
             return MongoCollection.AsQueryable().Where(expression).ToList();

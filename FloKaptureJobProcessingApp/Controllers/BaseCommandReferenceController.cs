@@ -10,12 +10,12 @@ namespace FloKaptureJobProcessingApp.Controllers
     [ApiController]
     public class BaseCommandReferenceController : ControllerBase
     {
-        public BaseRepository<BaseCommandReference> baseCommandReference = new GeneralService().BaseRepository<BaseCommandReference>();
+        private readonly BaseRepository<BaseCommandReference> _baseCommandReference = new GeneralService().BaseRepository<BaseCommandReference>();
 
         [HttpGet]
         public ActionResult<List<BaseCommandReference>> Get()
         {
-            var list = baseCommandReference.ListAllDocuments();
+            var list = _baseCommandReference.ListAllDocuments();
             return Ok(list);
         }
 
@@ -23,7 +23,7 @@ namespace FloKaptureJobProcessingApp.Controllers
         [HttpGet]
         public ActionResult<BaseCommandReference> Get(string id)
         {
-            var baseCommand = baseCommandReference.FindDocument(d => d._id == id);
+            var baseCommand = _baseCommandReference.FindDocument(d => d._id == id);
             return Ok(baseCommand);
         }
 
@@ -32,7 +32,7 @@ namespace FloKaptureJobProcessingApp.Controllers
         {
             if (!ModelState.IsValid) return BadRequest(baseCommand);
 
-            var addedReference = baseCommandReference.AddDocument(baseCommand).GetAwaiter().GetResult();
+            var addedReference = _baseCommandReference.AddDocument(baseCommand).GetAwaiter().GetResult();
             return Ok(addedReference);
         }
     }

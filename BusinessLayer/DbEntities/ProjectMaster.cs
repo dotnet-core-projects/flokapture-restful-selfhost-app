@@ -40,6 +40,7 @@ namespace BusinessLayer.DbEntities
         public bool IsTagsFrozen { get; set; } = false;
         public int LinesCount { get; set; } = 0;
 
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         [BsonIgnoreIfNull]
         public virtual LanguageMaster LanguageMaster { get; set; }
         public override string ToString()
