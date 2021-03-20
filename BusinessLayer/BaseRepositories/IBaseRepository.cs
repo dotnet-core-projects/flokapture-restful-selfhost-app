@@ -16,6 +16,8 @@ namespace BusinessLayer.BaseRepositories
 
         // IMongoDatabase MongoDatabase { get; }  
 
+        IMongoCollection<TSource> Collection { get; }
+
         IndexKeysDefinitionBuilder<TSource> IndexKeys { get; }
 
         FilterDefinitionBuilder<TSource> Filter { get; }

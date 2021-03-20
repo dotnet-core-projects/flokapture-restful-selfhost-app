@@ -1,6 +1,11 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using BusinessLayer.Models;
+using Microsoft.Build.Locator;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.FindSymbols;
+using Microsoft.CodeAnalysis.MSBuild;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -9,11 +14,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using BusinessLayer.Models;
-using Microsoft.Build.Locator;
-using Microsoft.CodeAnalysis.FindSymbols;
-using Microsoft.CodeAnalysis.MSBuild;
-using Newtonsoft.Json;
 
 namespace BusinessLayer.CsharpHelpers
 {
@@ -42,7 +42,7 @@ namespace BusinessLayer.CsharpHelpers
             {
                 workspace.WorkspaceFailed += (o, we) => Console.WriteLine(we.Diagnostic.Message);
                 var solutionFiles = Directory.GetFiles(slnDirPath, "*.sln", SearchOption.TopDirectoryOnly).ToList();
-                var methodReferenceDictionary = new Dictionary<string,  List<MethodReferenceData>>();
+                var methodReferenceDictionary = new Dictionary<string, List<MethodReferenceData>>();
                 foreach (var slnFile in solutionFiles)
                 {
                     var solutionPath = Path.Combine(slnDirPath, slnFile); // @"E:\core-test-projects\LocationService\Pods.Integration.Services.Location.sln";
@@ -58,7 +58,7 @@ namespace BusinessLayer.CsharpHelpers
                             if (Regex.IsMatch(document.FilePath, "reference.cs|Service References|AssemblyInfo.cs", RegexOptions.IgnoreCase)) continue;
                             var syntaxTree = await document.GetSyntaxTreeAsync().ConfigureAwait(false);
                             var methodList = (from field in syntaxTree.GetRoot().DescendantNodes().OfType<MethodDeclarationSyntax>()
-                                select field).ToList();
+                                              select field).ToList();
                             var referencesList = new List<MethodReferenceData>();
                             foreach (var method in methodList)
                             {
@@ -115,11 +115,18 @@ namespace BusinessLayer.CsharpHelpers
         protected internal void CleanUpSingleFile(string filePath)
         {
             string programText = File.ReadAllText(filePath);
-            var modifiedProgramText = ConcateMultilineStringLiterals(programText);
-            var finalProgramText = ConcateMultilineLinqQueryExpressions(modifiedProgramText);
-            var syntaxTree = CSharpSyntaxTree.ParseText(finalProgramText);
+            var rootTree = CSharpSyntaxTree.ParseText(programText);
+            var compRoot = rootTree.GetCompilationUnitRoot();
+            var syntaxTrivia = new SyntaxTrivia();
+            var multiLineCommentTrivias = from t in compRoot.DescendantTrivia()
+                                          where t.IsKind(SyntaxKind.MultiLineCommentTrivia)
+                                          select t;
+            var modifiedText = compRoot.ReplaceTrivia(multiLineCommentTrivias, (t1, t2) => syntaxTrivia).NormalizeWhitespace().GetText().ToString();
+            var modifiedProgramText = CsharpHelper.ConcatMultiLineStringLiterals(modifiedText);
+            var finalProgramText = CsharpHelper.ConcatMultiLineLinqQueryExpressions(modifiedProgramText);
+            var remodifiedText = CsharpHelper.ConcatMultiLineComments(finalProgramText);
+            var syntaxTree = CSharpSyntaxTree.ParseText(remodifiedText);
             var compilationRoot = syntaxTree.GetCompilationUnitRoot();
-            var st = new SyntaxTrivia();
             // if need to remove property declarations
             /*
             var propertyNodes = (from field in compilationRoot.DescendantNodes().OfType<PropertyDeclarationSyntax>() select field).ToList();
@@ -129,28 +136,32 @@ namespace BusinessLayer.CsharpHelpers
             var root = tree.GetCompilationUnitRoot();
             */
             var commentTrivia = from t in compilationRoot.DescendantTrivia()
-                                where // t.IsKind(SyntaxKind.SingleLineCommentTrivia) || t.IsKind(SyntaxKind.MultiLineCommentTrivia) ||
-                                t.IsKind(SyntaxKind.EndRegionDirectiveTrivia)
+                                where // t.IsKind(SyntaxKind.SingleLineCommentTrivia) || t.IsKind(SyntaxKind.MultiLineCommentTrivia) 
+                                   t.IsKind(SyntaxKind.EndRegionDirectiveTrivia)
                                 || t.IsKind(SyntaxKind.RegionDirectiveTrivia)
                                 || t.IsKind(SyntaxKind.PragmaChecksumDirectiveTrivia)
                                 || t.IsKind(SyntaxKind.PragmaWarningDirectiveTrivia)
                                 || t.IsKind(SyntaxKind.PragmaKeyword)
                                 || t.IsKind(SyntaxKind.EmptyStatement)
-                                || t.IsKind(SyntaxKind.AttributeList) // || t.IsKind(SyntaxKind.XmlComment) || t.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia)
+                                || t.IsKind(SyntaxKind.AttributeList)
                                 select t;
-            var newRoot = compilationRoot.ReplaceTrivia(commentTrivia, (t1, t2) => st).NormalizeWhitespace();
+            var newRoot = compilationRoot.ReplaceTrivia(commentTrivia, (t1, t2) => syntaxTrivia).NormalizeWhitespace();
             var text = newRoot.GetText().ToString();
             var attrTree = CSharpSyntaxTree.ParseText(text);
             var attrRoot = attrTree.GetCompilationUnitRoot();
             var attrList = from a in attrRoot.DescendantNodes().OfType<AttributeListSyntax>() select a;
             var withoutAttrList = attrRoot.ReplaceNodes(attrList, (syntax, listSyntax) => null).NormalizeWhitespace().GetText().ToString();
-            var fieldTree = CSharpSyntaxTree.ParseText(withoutAttrList);
-            var fieldRoot = fieldTree.GetCompilationUnitRoot();
+            var withFormattedProperties = CsharpHelper.ReplaceFieldsAndProperties(withoutAttrList);
+            
+            // attention: do not apply NormalizeWhitespace() after this, as properties are now formatted in single line.
+            // var fieldTree = CSharpSyntaxTree.ParseText(withFormattedProperties);
+            // var fieldRoot = fieldTree.GetCompilationUnitRoot();
 
             // if need to remove field declarations
             // var fieldsList = (from field in fieldRoot.DescendantNodes().OfType<FieldDeclarationSyntax>() select field).ToList();
             // var withoutFields = fieldRoot.ReplaceNodes(fieldsList, (syntax, declarationSyntax) => null);
-            var plainTextLines = fieldRoot.NormalizeWhitespace().GetText().ToString().Split('\n').Select(d => d.TrimEnd('\r')).Where(d => !string.IsNullOrWhiteSpace(d)).ToList();
+            // var plainTextLines = fieldRoot.GetText().ToString().Split('\n').Select(d => d.TrimEnd('\r')).Where(d => !string.IsNullOrWhiteSpace(d)).ToList();
+            var plainTextLines = withFormattedProperties.Split('\n').Select(d => d.TrimEnd('\r')).Where(d => !string.IsNullOrWhiteSpace(d)).ToList();
 
             // if need to cleanup more clutter
             /*
@@ -165,44 +176,6 @@ namespace BusinessLayer.CsharpHelpers
 
             Console.WriteLine($@"Formatted document: {filePath}");
             Console.WriteLine($@"==================================================");
-        }
-
-        private string ConcateMultilineStringLiterals(string programText)
-        {
-            var syntaxTree = CSharpSyntaxTree.ParseText(programText);
-            var compilationRoot = syntaxTree.GetCompilationUnitRoot();
-            var stringLiteralExp = compilationRoot.DescendantNodes().Where(d => d.IsKind(SyntaxKind.StringLiteralExpression) && d.GetText().Lines.Count >= 2).ToList();
-            if (!stringLiteralExp.Any(d => d.GetText().Lines.Count >= 2)) return programText;
-            var strLiteral = stringLiteralExp.First();
-            if (strLiteral == null) return programText;
-            var textLitLines = strLiteral.GetText();
-            if (textLitLines.Lines.Count <= 1) return programText;
-            var textLit = textLitLines.ToString();
-            var textLines = textLit.Split(new[] { "\r\n" }, StringSplitOptions.None);
-            string completeLine = Regex.Replace(string.Join(" ", textLines), "\\s+", " ");
-            var lineExpression = SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(completeLine));
-            var compilationUnitSyntax = compilationRoot.ReplaceNode(strLiteral, lineExpression);
-            var plainTextLines = compilationUnitSyntax.GetText().ToString();
-            return ConcateMultilineStringLiterals(plainTextLines);
-        }
-
-        private string ConcateMultilineLinqQueryExpressions(string programText)
-        {
-            var syntaxTree = CSharpSyntaxTree.ParseText(programText);
-            var compilationRoot = syntaxTree.GetCompilationUnitRoot();
-            var linqQueryExpressions = compilationRoot.DescendantNodes().Where(d => d.IsKind(SyntaxKind.QueryExpression) && d.GetText().Lines.Count >= 2).ToList();
-            if (!linqQueryExpressions.Any(d => d.GetText().Lines.Count >= 2)) return programText;
-            var firstToModify = linqQueryExpressions.First(d => d.GetText().Lines.Count >= 2);
-            if (firstToModify == null) return programText;
-            var textLitLines = firstToModify.GetText();
-            if (textLitLines.Lines.Count <= 1) return programText;
-            var textLit = textLitLines.ToString();
-            var textLines = textLit.Split(new[] { "\r\n" }, StringSplitOptions.None);
-            string completeLine = Regex.Replace(string.Join(' ', textLines), "\\s+", " ");
-            var lineExpression = SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(completeLine));
-            var compilationUnitSyntax = compilationRoot.ReplaceNode(firstToModify, lineExpression);
-            var modifiedProgramText = compilationUnitSyntax.GetText().ToString();
-            return ConcateMultilineLinqQueryExpressions(modifiedProgramText);
         }
     }
 }
