@@ -55,6 +55,7 @@ namespace BusinessLayer.BaseRepositories
         {
         }
 
+        public IMongoCollection<TSource> Collection => MongoCollection;
         // public IMongoCollection<TSource> MongoCollection => MongoDatabase.GetCollection<TSource>(typeof(TSource).Name);
 
         // public IMongoDatabase MongoDatabase => MongoClient.GetDatabase(MongoDb);

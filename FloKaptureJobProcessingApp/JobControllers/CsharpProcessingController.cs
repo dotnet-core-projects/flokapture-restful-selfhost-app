@@ -8,6 +8,7 @@ using Microsoft.Build.Locator;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.FindSymbols;
 using Microsoft.CodeAnalysis.MSBuild;
+using MongoDB.Driver;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -73,7 +74,7 @@ namespace FloKaptureJobProcessingApp.JobControllers
 
         [HttpGet]
         [Route("process-references")]
-        public async Task<ActionResult> ProcessMethodReferences(string projectId)
+        public async Task<ActionResult> ProcessMethodReferences(string projectId /* This is comment */)
         {
             MSBuildLocator.RegisterDefaults();
             using (var workspace = MSBuildWorkspace.Create())
@@ -91,9 +92,10 @@ namespace FloKaptureJobProcessingApp.JobControllers
                     var allCsFiles = _floKaptureService.FileMasterRepository.GetAllListItems(d => d.ProjectId == projectMaster._id);
                     workspace.WorkspaceFailed += (o, we) => Console.WriteLine(we.Diagnostic.Message);
                     var solutionFiles = Directory.GetFiles(slnDirPath, "*.sln", SearchOption.TopDirectoryOnly).ToList();
-                    var referenceList = new Dictionary<string, List<MethodReferenceData>>();
+
                     foreach (var slnFile in solutionFiles)
                     {
+                        var referenceList = new Dictionary<string, List<MethodReferenceData>>();
                         var solutionPath = Path.Combine(slnDirPath, slnFile); // @"E:\core-test-projects\LocationService\Pods.Integration.Services.Location.sln";
                         Console.WriteLine($@"Loading solution '{solutionPath}'");
                         var solution = await workspace.OpenSolutionAsync(solutionPath);
@@ -124,11 +126,15 @@ namespace FloKaptureJobProcessingApp.JobControllers
                                             {
                                                 foreach (var location in referenced.Locations)
                                                 {
+                                                    int lineIndex = location.Location.GetLineSpan().StartLinePosition.Line;
+                                                    var docText = await location.Document.GetTextAsync().ConfigureAwait(false);
+                                                    string callingLine = docText.Lines[lineIndex].ToString();
                                                     Console.WriteLine(@"==========================================");
                                                     Console.WriteLine($@"Method Name: {method.Identifier.ValueText} ");
                                                     Console.WriteLine($@"Source File: {Path.GetFileName(document.FilePath)}");
                                                     Console.WriteLine($@"Reference: {Path.GetFileName(location.Location.SourceTree.FilePath)}");
-                                                    Console.WriteLine($@"Line Index: {location.Location.GetLineSpan().StartLinePosition.Line + 1 }");
+                                                    Console.WriteLine($@"Actual Line: {callingLine}");
+                                                    Console.WriteLine($@"Line Index: {lineIndex + 1 }");
                                                     Console.WriteLine(@"===========================================");
                                                     methodReferences.Add(new MethodReferenceData
                                                     {
@@ -154,15 +160,15 @@ namespace FloKaptureJobProcessingApp.JobControllers
                                 referenceList.Add(fileMaster._id, methodReferences);
                             }
                         }
+                        var referenceData = JsonConvert.SerializeObject(referenceList, Formatting.Indented);
+                        var slnFileName = Path.GetFileNameWithoutExtension(slnFile);
+                        string jsonFile = Path.Combine(slnDirPath, $"{slnFileName}.json");
+                        if (System.IO.File.Exists(jsonFile)) System.IO.File.Delete(jsonFile);
+
+                        System.IO.File.WriteAllText(jsonFile, referenceData);
                     }
-                    var referenceData = JsonConvert.SerializeObject(referenceList, Formatting.Indented);
 
-                    string jsonFile = Path.Combine(slnDirPath, "reference.json");
-                    if (System.IO.File.Exists(jsonFile)) System.IO.File.Delete(jsonFile);
-
-                    System.IO.File.WriteAllText(jsonFile, referenceData);
-
-                    return Ok(referenceData);
+                    return Ok($"Reference data has been processed successfully for project: {projectMaster.ProjectName}");
                 }
                 catch (Exception exception)
                 { return StatusCode(500, exception); }
@@ -207,6 +213,61 @@ namespace FloKaptureJobProcessingApp.JobControllers
                 }
             }
             return Ok(projectMaster);
+        }
+
+        [HttpGet]
+        [Route("start-main-parsing")]
+        public async Task<ActionResult> StartParsingCsFiles(string projectId)
+        {
+            var projectMaster = _floKaptureService.ProjectMasterRepository.GetById(projectId);
+            if (projectMaster == null) return BadRequest($@"Project with id {projectId} not found!");
+            // var filterDefinition = _floKaptureService.FileMasterRepository.Filter.Or(_floKaptureService.FileMasterRepository.Filter.Eq(d => d.FileTypeReferenceId, "60507f342a60e0e6cbefd106"), _floKaptureService.FileMasterRepository.Filter.Eq(d => d.FileTypeReferenceId, "60507f66591cfa72c53a859e"));
+            // var fileCursor = await _floKaptureService.FileMasterRepository.Collection.FindAsync<FileMaster>(filter: filterDefinition).ConfigureAwait(false);
+            var allCsFiles = await _floKaptureService.FileMasterRepository.Aggregate()/*.Limit(200)*/.ToListAsync().ConfigureAwait(false);
+            foreach (var fileMaster in allCsFiles)
+            {
+                var programLines = System.IO.File.ReadAllLines(fileMaster.FilePath).ToList();
+                var csLineDetails = CsharpHelper.PrepareCsLineDetails(programLines); 
+                var assignedTryCatchCommands = BaseCommandExtractor.AssignBaseCommandToTryCatch(csLineDetails);
+                var assignedBaseCommands = BaseCommandExtractor.AssignBaseCommandId(assignedTryCatchCommands);
+                int methods = assignedBaseCommands.Count(d => d.BaseCommandId == 8);
+                int endMethods = assignedBaseCommands.Count(d => d.BaseCommandId == 9);
+                int ifs = assignedBaseCommands.Count(d => d.BaseCommandId == 1);
+                int elses = assignedBaseCommands.Count(d => d.BaseCommandId == 10);
+                int endIfs = assignedBaseCommands.Count(d => d.BaseCommandId == 2);
+                int loops = assignedBaseCommands.Count(d => d.BaseCommandId == 3);
+                int endLoops = assignedBaseCommands.Count(d => d.BaseCommandId == 4);
+                int tries = assignedBaseCommands.Count(d => d.BaseCommandId == 101);
+                int endTries = assignedBaseCommands.Count(d => d.BaseCommandId == 102);
+                int catches = assignedBaseCommands.Count(d => d.BaseCommandId == 201);
+                int endCatches = assignedBaseCommands.Count(d => d.BaseCommandId == 202);
+                int finalies = assignedBaseCommands.Count(d => d.BaseCommandId == 301);
+                int endFinalies = assignedBaseCommands.Count(d => d.BaseCommandId == 302);
+                int switches = assignedBaseCommands.Count(d => d.BaseCommandId == 58);
+                int endSwitches = assignedBaseCommands.Count(d => d.BaseCommandId == 59);
+                int classes = assignedBaseCommands.Count(d => d.BaseCommandId == 19);
+                int endClasses = assignedBaseCommands.Count(d => d.BaseCommandId == 20);
+
+                if (!classes.Equals(endClasses) || !methods.Equals(endMethods) || !ifs.Equals(endIfs) || !loops.Equals(endLoops))
+                {
+                    Console.BackgroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"{fileMaster.FileName} # {fileMaster.FilePath}");
+                    Console.BackgroundColor = ConsoleColor.Black;
+                }
+
+                Console.WriteLine($"==========================File Statistics=========================");
+                Console.WriteLine($"=========================={fileMaster.FileName}===================");
+                Console.WriteLine($"\nMethods: {methods}\nEndMethods: {endMethods}\nIfs: {ifs}" +
+                                  $"\nElses: {elses}\nEnd Ifs: {endIfs}\nLoops: {loops}\nEnd Loops: {endLoops}" +
+                                  $"\nTries: {tries}\nEnd-Tries: {endTries}\nCatches: {catches}" +
+                                  $"\nEnd-Catches: {endCatches}\nFinally: {finalies}\nEnd-Finally: {endFinalies}" +
+                                  $"\nSwitch: {switches}\nEnd-Switches: {endSwitches}" +
+                                  $"\nClass(es): {classes}\nEnd-Clssses: {endClasses}");
+                Console.WriteLine("==========================File Statistics=========================");
+                Console.WriteLine("\n=======================================================\n");
+            }
+
+            return Ok();
         }
     }
 }
