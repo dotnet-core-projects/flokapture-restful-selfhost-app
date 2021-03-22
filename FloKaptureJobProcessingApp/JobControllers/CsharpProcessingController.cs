@@ -74,7 +74,7 @@ namespace FloKaptureJobProcessingApp.JobControllers
 
         [HttpGet]
         [Route("process-references")]
-        public async Task<ActionResult> ProcessMethodReferences(string projectId /* This is comment */)
+        public async Task<ActionResult> ProcessMethodReferences(string projectId)
         {
             MSBuildLocator.RegisterDefaults();
             using (var workspace = MSBuildWorkspace.Create())
@@ -83,6 +83,7 @@ namespace FloKaptureJobProcessingApp.JobControllers
                 {
                     var projectMaster = _floKaptureService.ProjectMasterRepository.GetById(projectId);
                     if (projectMaster == null) return BadRequest($@"Project with id {projectId} not found!");
+                    var methodReferenceMaster = new GeneralService().BaseRepository<MethodReferenceMaster>();
                     /*
                     var previousFile = Path.Combine(projectMaster.PhysicalPath, "reference.json");
                     var rawJson = System.IO.File.ReadAllText(previousFile);
@@ -92,11 +93,11 @@ namespace FloKaptureJobProcessingApp.JobControllers
                     var allCsFiles = _floKaptureService.FileMasterRepository.GetAllListItems(d => d.ProjectId == projectMaster._id);
                     workspace.WorkspaceFailed += (o, we) => Console.WriteLine(we.Diagnostic.Message);
                     var solutionFiles = Directory.GetFiles(slnDirPath, "*.sln", SearchOption.TopDirectoryOnly).ToList();
+                    var referenceList = new List<MethodReferenceMaster>();
 
                     foreach (var slnFile in solutionFiles)
                     {
-                        var referenceList = new Dictionary<string, List<MethodReferenceData>>();
-                        var solutionPath = Path.Combine(slnDirPath, slnFile); // @"E:\core-test-projects\LocationService\Pods.Integration.Services.Location.sln";
+                        var solutionPath = Path.Combine(slnDirPath, slnFile);
                         Console.WriteLine($@"Loading solution '{solutionPath}'");
                         var solution = await workspace.OpenSolutionAsync(solutionPath);
                         Console.WriteLine($@"Finished loading solution '{solutionPath}'");
@@ -108,11 +109,16 @@ namespace FloKaptureJobProcessingApp.JobControllers
                             {
                                 if (Regex.IsMatch(document.FilePath, "reference.cs|Service References|AssemblyInfo.cs", RegexOptions.IgnoreCase)) continue;
                                 var syntaxTree = await document.GetSyntaxTreeAsync().ConfigureAwait(false);
+                                // var classDeclarationsOnly = (from d in syntaxTree.GetRoot().DescendantNodes().OfType<ClassDeclarationSyntax>() select d).ToList();
+
                                 var fileName = Path.GetFileNameWithoutExtension(document.FilePath);
                                 var fileMaster = allCsFiles.Find(d => d.FilePath == document.FilePath && d.FileNameWithoutExt == fileName);
                                 if (fileMaster == null) continue;
-                                var methodList = (from field in syntaxTree.GetRoot().DescendantNodes().OfType<MethodDeclarationSyntax>() select field).ToList();
                                 var methodReferences = new List<MethodReferenceData>();
+                                // foreach (var classDeclaration in classDeclarationsOnly)
+                                // {
+                                var methodList = (from field in syntaxTree.GetRoot().DescendantNodes().OfType<MethodDeclarationSyntax>()
+                                                  select field).ToList();
                                 foreach (var method in methodList)
                                 {
                                     var functionSymbol = compilation.GetSymbolsWithName(method.Identifier.ValueText).ToList();
@@ -134,16 +140,15 @@ namespace FloKaptureJobProcessingApp.JobControllers
                                                     Console.WriteLine($@"Source File: {Path.GetFileName(document.FilePath)}");
                                                     Console.WriteLine($@"Reference: {Path.GetFileName(location.Location.SourceTree.FilePath)}");
                                                     Console.WriteLine($@"Actual Line: {callingLine}");
-                                                    Console.WriteLine($@"Line Index: {lineIndex + 1 }");
+                                                    Console.WriteLine($@"Line Index: {lineIndex + 1}");
                                                     Console.WriteLine(@"===========================================");
+                                                    var refFileMaster = allCsFiles.Find(d => d.FilePath == location.Location.SourceTree.FilePath && d.FileName == Path.GetFileName(location.Location.SourceTree.FilePath));
+                                                    if (refFileMaster == null) continue;
                                                     methodReferences.Add(new MethodReferenceData
                                                     {
                                                         MethodName = method.Identifier.ValueText,
-                                                        SourceFileName = Path.GetFileName(document.FilePath),
-                                                        SourceFile = document.FilePath,
-                                                        ReferencedFile = location.Location.SourceTree.FilePath,
-                                                        ReferenceFileName = Path.GetFileName(location.Location.SourceTree.FilePath),
-                                                        LineIndex = location.Location.GetLineSpan().StartLinePosition.Line + 1
+                                                        LineIndex = location.Location.GetLineSpan().StartLinePosition.Line + 1,
+                                                        ReferencedFileId = refFileMaster._id
                                                     });
                                                     Thread.Sleep(10);
                                                 }
@@ -156,8 +161,20 @@ namespace FloKaptureJobProcessingApp.JobControllers
                                         }
                                     }
                                 }
+                                // }
                                 if (!methodReferences.Any()) continue;
-                                referenceList.Add(fileMaster._id, methodReferences);
+                                referenceList.Add(new MethodReferenceMaster
+                                {
+                                    SourceFileId = fileMaster._id,
+                                    SourceFileName = fileMaster.FileName,
+                                    MethodReferences = methodReferences
+                                });
+                                await methodReferenceMaster.AddDocument(new MethodReferenceMaster
+                                {
+                                    SourceFileId = fileMaster._id,
+                                    SourceFileName = fileMaster.FileName,
+                                    MethodReferences = methodReferences
+                                }).ConfigureAwait(false);
                             }
                         }
                         var referenceData = JsonConvert.SerializeObject(referenceList, Formatting.Indented);
@@ -227,7 +244,7 @@ namespace FloKaptureJobProcessingApp.JobControllers
             foreach (var fileMaster in allCsFiles)
             {
                 var programLines = System.IO.File.ReadAllLines(fileMaster.FilePath).ToList();
-                var csLineDetails = CsharpHelper.PrepareCsLineDetails(programLines); 
+                var csLineDetails = CsharpHelper.PrepareCsLineDetails(programLines);
                 var assignedTryCatchCommands = BaseCommandExtractor.AssignBaseCommandToTryCatch(csLineDetails);
                 var assignedBaseCommands = BaseCommandExtractor.AssignBaseCommandId(assignedTryCatchCommands);
                 int methods = assignedBaseCommands.Count(d => d.BaseCommandId == 8);
@@ -265,8 +282,35 @@ namespace FloKaptureJobProcessingApp.JobControllers
                                   $"\nClass(es): {classes}\nEnd-Clssses: {endClasses}");
                 Console.WriteLine("==========================File Statistics=========================");
                 Console.WriteLine("\n=======================================================\n");
-            }
 
+                string lineComment = string.Empty;
+                foreach (var csLineDetail in assignedBaseCommands)
+                {
+                    if (RegexCollections.LineComment.IsMatch(csLineDetail.ResolvedStatement))
+                    {
+                        lineComment += csLineDetail.ResolvedStatement;
+                        continue;
+                    }
+                    string ceiName = RegexCollections.TypeNameRegex.Match(csLineDetail.ResolvedStatement).Groups["TypeName"].Value.Trim();
+                    string variableName = RegexCollections.VariableDeclaration.Match(csLineDetail.ResolvedStatement).Groups["VariableName"].Value;
+                    int baseCommandId = Regex.IsMatch(csLineDetail.ResolvedStatement.Trim(), @"^{$") ? 41 : csLineDetail.BaseCommandId;
+                    var statementReference = new StatementReferenceMaster
+                    {
+                        BaseCommandId = baseCommandId,
+                        LineIndex = csLineDetail.LineIndex,
+                        FileId = fileMaster._id,
+                        OriginalStatement = csLineDetail.OriginalStatement,
+                        ResolvedStatement = csLineDetail.ResolvedStatement,
+                        MethodName = csLineDetail.MethodName,
+                        StatementComment = lineComment,
+                        ProjectId = fileMaster.ProjectId,
+                        VariableNameDeclared = string.IsNullOrEmpty(variableName) ? null : variableName,
+                        ClassNameDeclared = string.IsNullOrEmpty(ceiName) ? null : ceiName,
+                        AnnotateStatement = string.Empty
+                    };
+                    await _floKaptureService.StatementReferenceMasterRepository.AddDocument(statementReference).ConfigureAwait(false);
+                }
+            }
             return Ok();
         }
     }

@@ -1,7 +1,7 @@
-﻿using System;
-using BusinessLayer.BaseRepositories;
+﻿using BusinessLayer.BaseRepositories;
 using BusinessLayer.DbEntities;
 using BusinessLayer.JobProcessingUtils.UniVerseBasic;
+using System;
 
 namespace FloKaptureJobProcessingApp.FloKaptureServices
 {
@@ -13,6 +13,7 @@ namespace FloKaptureJobProcessingApp.FloKaptureServices
         BaseRepository<LanguageMaster> LanguageMasterRepository { get; }
         BaseRepository<ProjectMaster> ProjectMasterRepository { get; }
         BaseRepository<FileMaster> FileMasterRepository { get; }
+        BaseRepository<StatementReferenceMaster> StatementReferenceMasterRepository { get; }
         BaseRepository<FileTypeReference> FileTypeReferenceRepository { get; }
         BaseRepository<UniVerseDataDictionary> UniVerseDataDictionaryRepository { get; }
     }
