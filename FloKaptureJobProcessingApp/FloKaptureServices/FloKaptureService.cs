@@ -17,6 +17,7 @@ namespace FloKaptureJobProcessingApp.FloKaptureServices
         private BaseRepository<LanguageMaster> _languageMasterRepository;
         private BaseRepository<ProjectMaster> _projectMasterRepository;
         private BaseRepository<FileMaster> _fileMasterRepository;
+        private BaseRepository<StatementReferenceMaster> _statementReferenceMasterRepository;
         private BaseRepository<FileTypeReference> _fileTypeReferenceRepository;
         private BaseRepository<UniVerseDataDictionary> _uniVerseDataDictionaryRepository;
         public IUniVerseBasicUtils UniVerseBasicUtils => new UniVerseBasicUtils();
@@ -30,6 +31,8 @@ namespace FloKaptureJobProcessingApp.FloKaptureServices
             _projectMasterRepository ?? (_projectMasterRepository = new BaseRepository<ProjectMaster>());
         public BaseRepository<FileMaster> FileMasterRepository =>
             _fileMasterRepository ?? (_fileMasterRepository = new FileMasterRepository());
+        public BaseRepository<StatementReferenceMaster> StatementReferenceMasterRepository =>
+            _statementReferenceMasterRepository ?? (_statementReferenceMasterRepository = new BaseRepository<StatementReferenceMaster>());
         public BaseRepository<FileTypeReference> FileTypeReferenceRepository =>
             _fileTypeReferenceRepository ?? (_fileTypeReferenceRepository = new BaseRepository<FileTypeReference>());
         public BaseRepository<UniVerseDataDictionary> UniVerseDataDictionaryRepository =>
