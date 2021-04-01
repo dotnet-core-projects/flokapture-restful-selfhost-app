@@ -177,7 +177,8 @@ namespace BusinessLayer.BaseRepositories
 
         public virtual TSource GetDocument(Expression<Func<TSource, bool>> expression)
         {
-            return MongoCollection.FindSync(expression).ToList().First();
+            var result = MongoCollection.FindSync(expression).ToList();
+            return result.Any() ? result.First() : null;
         }
 
         public virtual T GetDocument<T>(Expression<Func<T, bool>> expression) where T : EntityBase
