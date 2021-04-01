@@ -60,14 +60,12 @@ namespace BusinessLayer.DbEntities
                 }
             }, {
                 "LanguageMaster", new EntityLookup
-                { From = "LanguageMaster", As = "ProjectMaster.LanguageMaster",
-                    LocalField = "ProjectMaster.LanguageId"
+                { From = "LanguageMaster", As = "ProjectMaster.LanguageMaster", LocalField = "ProjectMaster.LanguageId"
                 }
             }, {
                 "FileTypeReference", new EntityLookup
                 {
-                    From = "FileTypeReference", LocalField = "FileTypeReferenceId", ForeignField = "FileTypeReferenceId",
-                    As = "FileTypeReference"
+                    From = "FileTypeReference", LocalField = "FileTypeReferenceId", ForeignField = "FileTypeReferenceId", As = "FileTypeReference"
                 }
             }
         };

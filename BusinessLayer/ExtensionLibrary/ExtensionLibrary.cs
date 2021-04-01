@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace BusinessLayer.ExtensionLibrary
 {
@@ -16,6 +17,16 @@ namespace BusinessLayer.ExtensionLibrary
             string extension = string.Join(".", paths);
             var nameValue = new KeyValuePair<string, string>(name, string.Concat(".", extension));
             return nameValue;
+        } 
+        public static string SafeReplace(this string input, string find, bool matchWholeWord, string replacement = "")
+        {
+            string textToFind = matchWholeWord ? $@"\b{find}\b" : find;
+            return Regex.Replace(input, textToFind, replacement);
+        }
+        public static bool ContainsWholeWord(this string input, string find, bool matchWholeWord)
+        {
+            string textToFind = matchWholeWord ? $@"\b{find}\b" : find;
+            return Regex.IsMatch(input, textToFind);
         }
     }
 }

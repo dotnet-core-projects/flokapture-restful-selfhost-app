@@ -1,8 +1,8 @@
-﻿using System;
-using BusinessLayer.DbEntities;
+﻿using BusinessLayer.DbEntities;
 using FloKaptureJobProcessingApp.FloKaptureServices;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -19,7 +19,7 @@ namespace FloKaptureJobProcessingApp.Controllers
         [HttpGet]
         public ActionResult<List<FileMaster>> Get(string id)
         {
-            var fileMaster = _floKaptureService.FileMasterRepository.FindDocument(d=>d._id == id);
+            var fileMaster = _floKaptureService.FileMasterRepository.FindDocument(d => d._id == id);
             return Ok(fileMaster);
         }
 
@@ -48,6 +48,22 @@ namespace FloKaptureJobProcessingApp.Controllers
                 // var extRef = generalService.ListAllDocuments();
                 var extRef = generalService.GetAllItems().ToList(); // observer all of 2 above and this statement
                 return Ok(extRef);
+            }
+        }
+
+        [HttpGet]
+        [Route("method-references")]
+        public ActionResult MethodReferences(string projectId)
+        {
+            using (var generalService = new GeneralService().BaseRepository<MethodReferenceMaster>())
+            {
+                // var methodReference = generalService.Aggregate(PipelineDefinition<MethodReferenceMaster, MethodReferenceMaster>.Create(new BsonDocument("$match", new BsonDocument("ProjectId", projectId)), new BsonDocument("$limit", 5))).ToList();
+                var methodReference = generalService.Aggregate().Limit(5).ToList();
+                Console.WriteLine(methodReference.Count);
+                // var extRef = generalService.Aggregate().ToList();
+                // var extRef = generalService.ListAllDocuments();
+                // var extRef = generalService.GetAllItems().ToList(); // observer all of 2 above and this statement
+                return Ok(methodReference);
             }
         }
     }

@@ -18,7 +18,7 @@ namespace BusinessLayer.ExtensionLibrary
             {
                 lookups.Remove(lookup.Key);
                 return ApplyLookup(lookupWrapper
-                    .Lookup(lookup.Key, lookup.Value.LocalField, lookup.Value.ForeignField, lookup.Value.As)
+                    .Lookup(lookup.Value.From, lookup.Value.LocalField, lookup.Value.ForeignField, lookup.Value.As)
                     .Unwind($"{lookup.Value.As}", aggregateUnwindOptions)
                     .As<TSource>(), lookups);
             }
@@ -40,8 +40,7 @@ namespace BusinessLayer.ExtensionLibrary
             foreach (var bsonDocument in bsonDocuments)
             {
                 bsonDocuments.Remove(bsonDocument);
-                return AppendStages(fluent
-                    .AppendStage(new BsonDocumentPipelineStageDefinition<TSource, TSource>(bsonDocument)), bsonDocuments);
+                return AppendStages(fluent.AppendStage(new BsonDocumentPipelineStageDefinition<TSource, TSource>(bsonDocument)), bsonDocuments);
             }
             return fluent;
         }

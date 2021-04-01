@@ -1,5 +1,8 @@
-﻿namespace BusinessLayer.Models
+﻿using System.Diagnostics;
+
+namespace BusinessLayer.Models
 {
+    [DebuggerStepThrough]
     public class CsLineDetails
     {
         public int LineIndex { get; set; }
