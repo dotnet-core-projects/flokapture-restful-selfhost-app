@@ -2,7 +2,6 @@
 // using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 // using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -17,80 +16,59 @@ using System.Linq;
 using System.Net.Http.Formatting;
 using System.Net.Http.Headers;
 using System.Reflection;
-// using IHostingEnvironment = Microsoft.AspNetCore.Hosting.IHostingEnvironment;
+using Microsoft.Extensions.Configuration;
 
 namespace FloKaptureJobProcessingApp
 {
     public class StartUp
     {
-        public StartUp(IConfiguration configuration)
-        {
-            Configuration = configuration;
-        }
-
-        private IConfiguration Configuration { get; }
         public void ConfigureServices(IServiceCollection services)
         {
             services.Configure<ApiBehaviorOptions>(options =>
                 {
                     options.SuppressModelStateInvalidFilter = true;
                 })
-                .AddMvc()
+                .AddMvc(d => { d.EnableEndpointRouting = false; })
                 .AddControllersAsServices()
-                // .AddCollectionIndexes()
-                .AddJsonOptions(ConfigureJsonOptions)
-                .SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
-
+                .SetCompatibilityVersion(CompatibilityVersion.Latest);
+            services.AddControllers().AddNewtonsoftJson(jsonOptions =>
+            {
+                if (AppDomain.CurrentDomain.BaseDirectory == null) return;
+                string projectPath = AppDomain.CurrentDomain.BaseDirectory.Split(new[] { @"bin\" }, StringSplitOptions.None).First();
+                var configurationRoot = new ConfigurationBuilder().SetBasePath(projectPath).AddJsonFile("appsettings.json").Build();
+                string dateFormat = configurationRoot.GetSection("DateFormat").Value;
+                jsonOptions.SerializerSettings.Converters.Add(new IsoDateTimeConverter
+                {
+                    DateTimeFormat = dateFormat,
+                    Culture = new CultureInfo("en-US")
+                    {
+                        DateTimeFormat = new DateTimeFormatInfo
+                        {
+                            ShortDatePattern = dateFormat
+                        }
+                    },
+                    DateTimeStyles = DateTimeStyles.AdjustToUniversal
+                });
+                jsonOptions.SerializerSettings.DateFormatString = dateFormat;
+                jsonOptions.SerializerSettings.Formatting = Formatting.Indented;
+                jsonOptions.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
+                jsonOptions.AllowInputFormatterExceptionMessages = true;
+                jsonOptions.SerializerSettings.SerializationBinder = new DefaultSerializationBinder();
+                jsonOptions.SerializerSettings.ContractResolver = new DictionaryAsArrayResolver();
+            });
         }
-        public void Configure(IApplicationBuilder app /* , IHostingEnvironment env, ILoggerFactory loggerFactory */)
+        public void Configure(IApplicationBuilder app)
         {
-            /*
-            if (env.IsDevelopment())
-                app.UseDeveloperExceptionPage();
-            else
-                app.UseHsts();
-            */
-
             app.UseCors();
             app.UseMvcWithDefaultRoute();
             app.UseHttpsRedirection();
 
-            // loggerFactory.AddConsole();
-            // loggerFactory.AddDebug();
-
             app.UseMvc(routes =>
             {
-                routes.MapRoute(name: "default", template: "api/{controller}/{action}/{id}",
-                    defaults: new { id = RouteParameter.Optional, action = RouteParameter.Optional });
-                routes.MapRoute(name: "job-api", template: "job/{controller}/{action}/{id}",
-                    defaults: new { id = RouteParameter.Optional, action = RouteParameter.Optional });
-                routes.MapRoute(name: "config-api", template: "config/{controller}/{action}/{id}",
-                    defaults: new { id = RouteParameter.Optional, action = RouteParameter.Optional });
+                routes.MapRoute(name: "default", template: "api/{controller}/{action}/{id}", defaults: new { id = RouteParameter.Optional, action = RouteParameter.Optional });
+                routes.MapRoute(name: "job-api", template: "job/{controller}/{action}/{id}", defaults: new { id = RouteParameter.Optional, action = RouteParameter.Optional });
+                routes.MapRoute(name: "config-api", template: "config/{controller}/{action}/{id}", defaults: new { id = RouteParameter.Optional, action = RouteParameter.Optional });
             });
-        }
-
-        private static void ConfigureJsonOptions(MvcJsonOptions jsonOptions)
-        {
-            string projectPath = AppDomain.CurrentDomain.BaseDirectory.Split(new[] { @"bin\" }, StringSplitOptions.None).First();
-            var configurationRoot = new ConfigurationBuilder().SetBasePath(projectPath).AddJsonFile("appsettings.json").Build();
-            string dateFormat = configurationRoot.GetSection("DateFormat").Value;
-            jsonOptions.SerializerSettings.Converters.Add(new IsoDateTimeConverter
-            {
-                DateTimeFormat = dateFormat,
-                Culture = new CultureInfo("en-US")
-                {
-                    DateTimeFormat = new DateTimeFormatInfo
-                    {
-                        ShortDatePattern = dateFormat
-                    }
-                },
-                DateTimeStyles = DateTimeStyles.AdjustToUniversal
-            });
-            jsonOptions.SerializerSettings.Formatting = Formatting.Indented;
-            jsonOptions.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
-            jsonOptions.AllowInputFormatterExceptionMessages = true;
-            jsonOptions.SerializerSettings.SerializationBinder = new DefaultSerializationBinder();
-            jsonOptions.SerializerSettings.ContractResolver = new DictionaryAsArrayResolver(); // new DefaultContractResolver();
         }
     }
 
@@ -121,20 +99,17 @@ namespace FloKaptureJobProcessingApp
     {
         protected override JsonContract CreateContract(Type objectType)
         {
-            return objectType.GetInterfaces()
-                .Any(i => i == typeof(IDictionary) || i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IDictionary<,>))
-                ? CreateArrayContract(objectType)
-                : base.CreateContract(objectType);
+            return objectType.GetInterfaces().Any(i => i == typeof(IDictionary) || i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IDictionary<,>)) ? CreateArrayContract(objectType) : base.CreateContract(objectType);
         }
         [DebuggerStepThrough]
         protected override IList<JsonProperty> CreateProperties(Type type, MemberSerialization memberSerialization)
         {
             return type.GetProperties().Select(p =>
-                {
-                    var jp = CreateProperty(p, memberSerialization);
-                    jp.ValueProvider = new NullToEmptyStringValueProvider(p);
-                    return jp;
-                }).ToList();
+            {
+                var jp = CreateProperty(p, memberSerialization);
+                jp.ValueProvider = new NullToEmptyStringValueProvider(p);
+                return jp;
+            }).ToList();
         }
     }
 
