@@ -395,7 +395,7 @@ namespace BusinessLayer.BaseRepositories
             return MongoCollection.FindAsync(session, filter, options, cancellationToken).GetAwaiter().GetResult();
         }
 
-        public override IAsyncCursor<TProjection> FindSync<TProjection>(FilterDefinition<TSource> filter, FindOptions<TSource, TProjection> options = null, CancellationToken cancellationToken = default(CancellationToken))
+        public override IAsyncCursor<TProjection> FindSync<TProjection>(FilterDefinition<TSource> filter, FindOptions<TSource, TProjection> options = null, CancellationToken cancellationToken = default)
         {
             // TODO: Needs to check whether we can implement FindWithLookup method here...
             /*

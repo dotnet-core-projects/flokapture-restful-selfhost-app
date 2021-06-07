@@ -30,7 +30,8 @@ namespace FloKaptureJobRestfulSelfHostApp
     {
         public static void ConfigureEndpoints(this KestrelServerOptions options)
         {
-            var environment = options.ApplicationServices.GetRequiredService<IHostingEnvironment>();
+            var environment = options.ApplicationServices.GetRequiredService<IWebHostEnvironment>();
+            if (AppDomain.CurrentDomain.BaseDirectory == null) return;
             string projectPath = AppDomain.CurrentDomain.BaseDirectory.Split(new[] { @"bin\" }, StringSplitOptions.None).First();
             var configurationRoot = new ConfigurationBuilder().SetBasePath(projectPath).AddJsonFile("appsettings.json").Build();
             var endpoints = configurationRoot.GetSection("HttpServer:EndPoints").GetChildren()
@@ -68,31 +69,29 @@ namespace FloKaptureJobRestfulSelfHostApp
                     options.Listen(address, port, listenOptions =>
                     {
                         if (config.Scheme != "https") return;
-                        var certificate = LoadCertificate(config, environment);
+                        var certificate = LoadCertificate(config);
                         listenOptions.UseHttps(certificate);
                     });
                 }
-            }              
+            }
         }
 
-        private static X509Certificate2 LoadCertificate(EndPointConfiguration config, IHostingEnvironment environment)
+        private static X509Certificate2 LoadCertificate(EndPointConfiguration config)
         {
             if (!string.IsNullOrEmpty(config.StoreName) && !string.IsNullOrEmpty(config.StoreLocation))
             {
-                using (var x509Store = new X509Store(config.StoreName, Enum.Parse<StoreLocation>(config.StoreLocation)))
-                {
-                    x509Store.Open(OpenFlags.ReadOnly);
-                    var certificates = x509Store.Certificates.Find(X509FindType.FindBySubjectName, config.Host, !environment.IsDevelopment());
+                using var x509Store = new X509Store(config.StoreName, Enum.Parse<StoreLocation>(config.StoreLocation));
+                x509Store.Open(OpenFlags.ReadOnly);
+                var certificates = x509Store.Certificates.Find(X509FindType.FindBySubjectName, config.Host, false);
 
-                    /*
+                /*
                     if (!certificates.Any())
                     {
                         throw new InvalidOperationException($"Certificate not found for: {config.Host}.");
                     }
                     */
 
-                    return certificates.OfType<X509Certificate2>().First();
-                }
+                return certificates.OfType<X509Certificate2>().First();
             }
 
             if (!string.IsNullOrEmpty(config.FilePath) && !string.IsNullOrEmpty(config.Password))
