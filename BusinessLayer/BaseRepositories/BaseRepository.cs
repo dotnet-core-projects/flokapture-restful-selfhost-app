@@ -127,6 +127,7 @@ namespace BusinessLayer.BaseRepositories
         {
             return MongoCollection.AsQueryable().ToList();
         }
+
         public virtual List<TSource> GetAllListItems(Expression<Func<TSource, bool>> expression)
         {
             return MongoCollection.AsQueryable().Where(expression).ToList();
@@ -157,7 +158,7 @@ namespace BusinessLayer.BaseRepositories
             return await MongoCollection.DeleteOneAsync(filter).ConfigureAwait(false);
         }
 
-        public virtual T DeleteDocument<T>(string id)
+        public virtual T DeleteDocument<T>(string id) 
         {
             var filter = Builders<T>.Filter.Eq("_id", id);
             return MongoDatabase.GetCollection<T>(typeof(T).Name).FindOneAndDelete(filter);
@@ -323,7 +324,17 @@ namespace BusinessLayer.BaseRepositories
 
         public TSource GetById(string id)
         {
-            return MongoCollection.Find(Filter.Eq(x => x._id, id)).FirstOrDefault();
+            try
+            {
+                // var result = MongoCollection.FindAsync(Filter.Eq(x => x._id, id)).GetAwaiter().GetResult().ToList();
+                var result = MongoCollection.Find(Filter.Eq(x => x._id, id)).Limit(1).ToList();
+                return result.Any() ? result.First() : null;
+            }
+            catch (Exception exception)
+            {
+                Console.WriteLine(exception);
+                return null;
+            }
         }
 
         public int Count()

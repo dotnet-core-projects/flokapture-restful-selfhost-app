@@ -12,7 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FloKaptureJobRestfulSelfHostApp
 {
-    internal class Program
+    internal static class Program
     {
         private static void Main()
         {

@@ -9,12 +9,12 @@ namespace FloKaptureJobProcessingApp.Controllers
     [ApiController]
     public class LanguageMasterController : ControllerBase
     {
-        public BaseRepository<LanguageMaster> languageRepository = new GeneralService().BaseRepository<LanguageMaster>();
+        public BaseRepository<LanguageMaster> LanguageRepository = new GeneralService().BaseRepository<LanguageMaster>();
 
         [HttpGet]
         public ActionResult Get()
         {
-            var languages = languageRepository.GetAllItems();
+            var languages = LanguageRepository.GetAllItems();
             return Ok(languages);
         }
 
@@ -22,7 +22,7 @@ namespace FloKaptureJobProcessingApp.Controllers
         [HttpPost]
         public ActionResult<LanguageMaster> AddLanguage([FromBody] LanguageMaster languageMaster)
         {
-            var addedLanguage = languageRepository.AddDocument(languageMaster).GetAwaiter().GetResult();
+            var addedLanguage = LanguageRepository.AddDocument(languageMaster).GetAwaiter().GetResult();
             return Ok(addedLanguage);
         }
     }
