@@ -1,18 +1,15 @@
-using Microsoft.EntityFrameworkCore.Internal;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using Newtonsoft.Json;
-using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 
 namespace BusinessLayer.DbEntities
 {
     [DebuggerStepThrough]
     public class FileTypeReference : EntityBase
     {
-        private readonly List<string> _validExtension = new List<string> { ".xlsx", ".csv", ".xlx" };   
+        // private readonly List<string> _validExtension = new List<string> { ".xlsx", ".csv", ".xlx" };   
         /*
         public FileTypeReference()
         {

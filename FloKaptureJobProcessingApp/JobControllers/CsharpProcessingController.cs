@@ -73,197 +73,6 @@ namespace FloKaptureJobProcessingApp.JobControllers
         }
 
         [HttpGet]
-        [Route("process-references")]
-        public async Task<ActionResult> ProcessMethodReferences(string projectId)
-        {
-            MSBuildLocator.RegisterDefaults();
-            using (var workspace = MSBuildWorkspace.Create())
-            {
-                try
-                {
-                    var projectMaster = _floKaptureService.ProjectMasterRepository.GetById(projectId);
-                    if (projectMaster == null) return BadRequest($@"Project with id {projectId} not found!");
-                    var methodReferenceMaster = new GeneralService().BaseRepository<MethodReferenceMaster>();
-                    /*
-                    var previousFile = Path.Combine(projectMaster.PhysicalPath, "reference.json");
-                    var rawJson = System.IO.File.ReadAllText(previousFile);
-                    var jsonData = JsonConvert.DeserializeObject<Dictionary<string, List<MethodReferenceData>>>(rawJson);
-                    */
-                    string slnDirPath = projectMaster.PhysicalPath; // @"D:\FloKapture-DotNet-Projects\flokapture-dotnet-job-processing-api"; 
-                    var allCsFiles = _floKaptureService.FileMasterRepository.GetAllListItems(d => d.ProjectId == projectMaster._id);
-                    workspace.WorkspaceFailed += (o, we) => Console.WriteLine(we.Diagnostic.Message);
-                    var solutionFiles = Directory.GetFiles(slnDirPath, "*.sln", SearchOption.TopDirectoryOnly).ToList();
-                    workspace.LoadMetadataForReferencedProjects = true;
-
-                    foreach (var slnFile in solutionFiles)
-                    {
-                        var solutionPath = Path.Combine(slnDirPath, slnFile);
-                        Console.WriteLine($@"Loading solution '{solutionPath}'");
-                        var solution = await workspace.OpenSolutionAsync(solutionPath);
-                        Console.WriteLine($@"Finished loading solution '{solutionPath}'");
-                        var projectDocuments = new List<Document>();
-                        var syntaxTrees = new List<SyntaxTree>();
-                        var diagnostics = workspace.Diagnostics;
-                        foreach (var diagnostic in diagnostics)
-                        {
-                            Console.WriteLine(diagnostic.Message);
-                        }
-
-                        foreach (var project in solution.Projects)
-                        {
-                            // var currentProject = await workspace.OpenProjectAsync(project.FilePath).ConfigureAwait(false); // .Result;
-                            foreach (var doc in project.Documents)
-                            {
-                                var syntaxTree = await doc.GetSyntaxTreeAsync().ConfigureAwait(false);
-                                syntaxTrees.Add(syntaxTree);
-                                projectDocuments.Add(doc);
-                            }
-                        }
-
-                        var msCorLib = MetadataReference.CreateFromFile(typeof(object).Assembly.Location);
-                        var compilation = CSharpCompilation.Create("Compilation", syntaxTrees: syntaxTrees, references: new[] { msCorLib });
-                        var methodReferences = new List<MethodReferenceMaster>();
-
-                        var heirarchyDetails = PrepareInheritanceHeirarchy(documents: projectDocuments);
-                        Console.WriteLine(heirarchyDetails.KeyValues.Count);
-                        /*
-                        var model = compilation.GetSemanticModel(tree);
-                        var forStatement = tree.GetRoot().DescendantNodes().OfType<ForStatementSyntax>().Single();
-                        DataFlowAnalysis dataFlowAnalysis = model.AnalyzeDataFlow(forStatement);
-                        */
-                        foreach (var document in projectDocuments)
-                        {
-                            // if (document.Name != "CustomerCommunicationRepository.cs" && document.Name != "CustomerCommunicationRepositoryBase.cs" && document.Name != "CommunicationDataManager.cs") continue;
-                            if (Regex.IsMatch(document.FilePath, "reference.cs|Service References|AssemblyInfo.cs", RegexOptions.IgnoreCase)) continue;
-                            var syntaxTree = await document.GetSyntaxTreeAsync().ConfigureAwait(false);
-                            var hasDiagnostics = syntaxTree.GetDiagnostics();
-                            if (hasDiagnostics.Any()) continue; // do some work here to set flags
-                            // this is referenced document in which other/same/from-chain documents method is called.
-                            var refFileMaster = allCsFiles.Find(d => d.FilePath == document.FilePath && d.FileName == Path.GetFileName(document.FilePath));
-                            if (refFileMaster == null) continue;
-
-                            var sm = await document.GetSyntaxTreeAsync().ConfigureAwait(false);
-                            var semantic = compilation.GetSemanticModel(sm);
-                            var invocations = (from d in syntaxTree.GetRoot().DescendantNodes().OfType<InvocationExpressionSyntax>() select d).ToList();
-                            Console.WriteLine($@"=================== {document.FilePath} ===============================");
-                            foreach (var invocation in invocations)
-                            {
-                                var methodSymbol = semantic.GetSymbolInfo(invocation).Symbol as IMethodSymbol;
-                                if (methodSymbol == null) continue;
-                                var foundMethodDefs = (from ds in methodSymbol.DeclaringSyntaxReferences let methodDecl = ds.SyntaxTree.GetRoot().DescendantNodes().OfType<MethodDeclarationSyntax>() let methods = methodDecl.Where(md => invocation.Expression.ToString().Split('.').Last() == md.Identifier.ValueText) select methods).ToList();
-                                var foundInFirst = false;
-                                foreach (var foundMethod in foundMethodDefs)
-                                {
-                                    foreach (var fm in foundMethod)
-                                    {
-                                        if (fm.ParameterList.Parameters.Count != invocation.ArgumentList.Arguments.Count) continue;
-                                        // int lineIndex = fm.GetLocation().GetLineSpan().StartLinePosition.Line;
-                                        // var docText = await fm.GetLocation().SourceTree.GetTextAsync().ConfigureAwait(false);
-                                        // string definitionLine = docText.Lines[lineIndex].ToString();
-                                        var doc = projectDocuments.Find(d => d.FilePath == fm.GetLocation().SourceTree.FilePath);
-                                        var heirarchyDoc = heirarchyDetails.KeyValues.Find(d => d.FileId == doc.Id.Id.ToString());
-                                        if (heirarchyDoc != null && heirarchyDoc.Value.Equals(88)) continue;
-                                        var fileName = Path.GetFileNameWithoutExtension(document.FilePath);
-                                        var fileMaster = allCsFiles.Find(d => d.FilePath == document.FilePath && d.FileNameWithoutExt == fileName);
-                                        if (fileMaster == null) continue;
-                                        var mrm = new MethodReferenceMaster
-                                        {
-                                            ProjectId = projectMaster._id,
-                                            MethodName = fm.Identifier.ValueText,
-                                            MethodLocation = fm.GetLocation().GetLineSpan().StartLinePosition.Line + 1,
-                                            InvocationLocation = invocation.GetLocation().GetLineSpan().StartLinePosition.Line + 1,
-                                            InvocationLine = invocation.ToString().Trim().Trim('\r', '\n').Trim(),
-                                            SourceFileName = Path.GetFileName(doc.FilePath),
-                                            ReferencedFileName = Path.GetFileName(document.FilePath),
-                                            SourceFileId = fileMaster._id,
-                                            ReferencedFileId = refFileMaster._id,
-                                            SourceFilePath = doc.FilePath,
-                                            ReferencedFilePath = document.FilePath
-                                        };
-                                        methodReferences.Add(mrm);
-                                        await methodReferenceMaster.AddDocument(mrm).ConfigureAwait(false);
-
-                                        Console.WriteLine($@"{invocation.Expression}");
-                                        foundInFirst = true;
-                                        break;
-                                    }
-                                    if (foundInFirst) break;
-                                }
-                                if (foundInFirst) continue;
-                                var referencesTo = await SymbolFinder.FindReferencesAsync(methodSymbol, document.Project.Solution).ConfigureAwait(false);
-                                var de = SymbolFinder.FindDeclarationsAsync(document.Project, referencesTo.First().Definition.Name, false, SymbolFilter.Member).ConfigureAwait(false).GetAwaiter().GetResult().ToList();
-                                if (!de.Any()) continue;
-                                // means there might be interface method which is defined in implemented class and inherited chain as well.
-                                var foundRef = false;
-                                de.Reverse(); // TODO: this is not good idea here, but it's OK for now...
-                                foreach (var dSymbol in de)
-                                {
-                                    var objectSymbol = (from ds in dSymbol.DeclaringSyntaxReferences let interfc = ds.SyntaxTree.GetRoot().DescendantNodes().OfType<InterfaceDeclarationSyntax>() where interfc.ToList().Count > 0 select interfc.First()).ToList();
-                                    if (objectSymbol.Any()) continue;
-                                    var foundMethods = (from ds in dSymbol.DeclaringSyntaxReferences let methodDecl = ds.SyntaxTree.GetRoot().DescendantNodes().OfType<MethodDeclarationSyntax>() let methods = methodDecl.Where(md => invocation.Expression.ToString().Split('.').Last() == md.Identifier.ValueText) select methods).ToList();
-                                    foreach (var foundMethod in foundMethods)
-                                    {
-                                        foreach (var fm in foundMethod)
-                                        {
-                                            if (fm.ParameterList.Parameters.Count != invocation.ArgumentList.Arguments.Count) continue;
-                                            // int lineIndex = fm.GetLocation().GetLineSpan().StartLinePosition.Line;
-                                            // var docText = await fm.GetLocation().SourceTree.GetTextAsync().ConfigureAwait(false);
-                                            // string definitionLine = docText.Lines[lineIndex].ToString();
-                                            var doc = projectDocuments.Find(d => d.FilePath == fm.GetLocation().SourceTree.FilePath);
-                                            var heirarchyDoc = heirarchyDetails.KeyValues.Find(d => d.FileId == doc.Id.Id.ToString());
-                                            if (heirarchyDoc != null && heirarchyDoc.Value.Equals(88)) continue;
-
-                                            var fileName = Path.GetFileNameWithoutExtension(document.FilePath);
-                                            var fileMaster = allCsFiles.Find(d => d.FilePath == document.FilePath && d.FileNameWithoutExt == fileName);
-                                            if (fileMaster == null) continue;
-
-                                            var mrm = new MethodReferenceMaster
-                                            {
-                                                ProjectId = projectMaster._id,
-                                                MethodName = fm.Identifier.ValueText,
-                                                MethodLocation = fm.GetLocation().GetLineSpan().StartLinePosition.Line + 1,
-                                                InvocationLocation = invocation.GetLocation().GetLineSpan().StartLinePosition.Line + 1,
-                                                InvocationLine = invocation.ToString().Trim().Trim('\r', '\n').Trim(),
-                                                SourceFileName = Path.GetFileName(doc.FilePath),
-                                                ReferencedFileName = Path.GetFileName(document.FilePath),
-                                                SourceFileId = fileMaster._id,
-                                                ReferencedFileId = refFileMaster._id,
-                                                SourceFilePath = doc.FilePath,
-                                                ReferencedFilePath = document.FilePath
-                                            };
-                                            methodReferences.Add(mrm);
-                                            await methodReferenceMaster.AddDocument(mrm).ConfigureAwait(false);
-
-                                            Console.WriteLine($@"{invocation.Expression}");
-                                            foundRef = true;
-                                            break;
-                                        }
-                                        if (foundRef) break; // actually not needed, but added for now
-                                    }
-                                    if (foundRef) break;
-                                }
-
-                                Console.WriteLine(@"------------------------------------------------------------------------------");
-                            }
-                        }
-                        Console.WriteLine($@"Total References inserted: {methodReferences.Count}");
-                        var referenceData = JsonConvert.SerializeObject(methodReferences, Formatting.Indented);
-                        var slnFileName = Path.GetFileNameWithoutExtension(solutionFiles.First());
-                        string jsonFile = Path.Combine(slnDirPath, $"{slnFileName}.json");
-                        if (System.IO.File.Exists(jsonFile)) System.IO.File.Delete(jsonFile);
-
-                        System.IO.File.WriteAllText(jsonFile, referenceData);
-
-                    }
-
-                    return Ok($"Reference data has been processed successfully for project: {projectMaster.ProjectName}");
-                }
-                catch (Exception exception)
-                { return StatusCode(500, exception); }
-            }
-        }
-
-        [HttpGet]
         [Route("process-method-details")]
         public async Task<ActionResult> ProcessMethodDetails(string projectId)
         {
@@ -357,6 +166,7 @@ namespace FloKaptureJobProcessingApp.JobControllers
                 string lineComment = string.Empty;
                 foreach (var csLineDetail in assignedBaseCommands)
                 {
+                    if (Regex.IsMatch(csLineDetail.ResolvedStatement.Trim('\r', '\n', ' '), @"^([;()\[\]]+)$")) continue;
                     if (string.IsNullOrEmpty(csLineDetail.ResolvedStatement)) continue;
                     if (Regex.IsMatch(csLineDetail.ResolvedStatement, "^using\\s")) continue;
                     if (RegexCollections.LineComment.IsMatch(csLineDetail.ResolvedStatement))
@@ -393,6 +203,223 @@ namespace FloKaptureJobProcessingApp.JobControllers
         }
 
         [HttpGet]
+        [Route("process-references")]
+        public async Task<ActionResult> ProcessMethodReferences(string projectId)
+        {
+            MSBuildLocator.RegisterDefaults();
+            using (var workspace = MSBuildWorkspace.Create())
+            {
+                try
+                {
+                    var projectMaster = _floKaptureService.ProjectMasterRepository.GetById(projectId);
+                    if (projectMaster == null) return BadRequest($@"Project with id {projectId} not found!");
+                    var methodReferenceMaster = new GeneralService().BaseRepository<MethodReferenceMaster>();
+                    /*
+                    var previousFile = Path.Combine(projectMaster.PhysicalPath, "reference.json");
+                    var rawJson = System.IO.File.ReadAllText(previousFile);
+                    var jsonData = JsonConvert.DeserializeObject<Dictionary<string, List<MethodReferenceData>>>(rawJson);
+                    */
+                    string slnDirPath = projectMaster.PhysicalPath; // @"D:\FloKapture-DotNet-Projects\flokapture-dotnet-job-processing-api"; 
+                    var allCsFiles = _floKaptureService.FileMasterRepository.GetAllListItems(d => d.ProjectId == projectMaster._id);
+                    workspace.WorkspaceFailed += (o, we) => Console.WriteLine(we.Diagnostic.Message);
+                    var solutionFiles = Directory.GetFiles(slnDirPath, "*.sln", SearchOption.TopDirectoryOnly).ToList();
+                    workspace.LoadMetadataForReferencedProjects = true;
+
+                    foreach (var slnFile in solutionFiles)
+                    {
+                        var solutionPath = Path.Combine(slnDirPath, slnFile);
+                        Console.WriteLine($@"Loading solution '{solutionPath}'");
+                        var solution = await workspace.OpenSolutionAsync(solutionPath);
+                        Console.WriteLine($@"Finished loading solution '{solutionPath}'");
+                        var projectDocuments = new List<Document>();
+                        var syntaxTrees = new List<SyntaxTree>();
+                        var diagnostics = workspace.Diagnostics;
+                        foreach (var diagnostic in diagnostics)
+                        {
+                            Console.WriteLine(diagnostic.Message);
+                        }
+
+                        foreach (var project in solution.Projects)
+                        {
+                            // var currentProject = await workspace.OpenProjectAsync(project.FilePath).ConfigureAwait(false); // .Result;
+                            foreach (var doc in project.Documents)
+                            {
+                                var syntaxTree = await doc.GetSyntaxTreeAsync().ConfigureAwait(false);
+                                syntaxTrees.Add(syntaxTree);
+                                projectDocuments.Add(doc);
+                            }
+                        }
+
+                        var msCorLib = MetadataReference.CreateFromFile(typeof(object).Assembly.Location);
+                        var compilation = CSharpCompilation.Create("Compilation", syntaxTrees: syntaxTrees, references: new[] { msCorLib });
+                        var methodReferences = new List<MethodReferenceMaster>();
+
+                        var heirarchyDetails = PrepareInheritanceHeirarchy(documents: projectDocuments);
+                        Console.WriteLine(heirarchyDetails.KeyValues.Count);
+                        /*
+                        var model = compilation.GetSemanticModel(tree);
+                        var forStatement = tree.GetRoot().DescendantNodes().OfType<ForStatementSyntax>().Single();
+                        DataFlowAnalysis dataFlowAnalysis = model.AnalyzeDataFlow(forStatement);
+                        */
+                        foreach (var document in projectDocuments)
+                        {
+                            // if (document.Name != "LogisticsService.svc.cs") continue;
+                            var sm = await document.GetSyntaxTreeAsync().ConfigureAwait(false);
+                            var semantic = compilation.GetSemanticModel(sm);
+                            var smt = await document.GetSyntaxTreeAsync().ConfigureAwait(false);
+                            var semanticModel = compilation.GetSemanticModel(smt);
+                            var methodDeclaration = (from d in sm.GetRoot().DescendantNodes().OfType<MethodDeclarationSyntax>() select d).ToList();
+                            var methodSymbolStack = new List<IMethodSymbol>();
+                            foreach (var declaration in methodDeclaration)
+                            {
+                                var methodSymbol = semanticModel.GetDeclaredSymbol(declaration);
+                                var references = await SymbolFinder.FindReferencesAsync(methodSymbol, solution).ConfigureAwait(false);
+                                Console.WriteLine(references);
+                                var definition = await SymbolFinder.FindSourceDefinitionAsync(methodSymbol, solution).ConfigureAwait(false);
+                                Console.WriteLine(definition);
+                                methodSymbolStack.Add(methodSymbol);
+                            }
+                            foreach (var method in methodSymbolStack)
+                            {
+
+                                var callers = await SymbolFinder.FindCallersAsync(method, solution);
+                                foreach (var referencer in callers)
+                                {
+                                    var callingMethod = (MethodDeclarationSyntax)referencer.CallingSymbol.DeclaringSyntaxReferences[0].GetSyntax();
+                                    Console.WriteLine(callingMethod.Identifier.ValueText);
+                                }
+                            }
+
+                            if (document.Name != "LogisticsService.svc.cs") continue; // && document.Name != "CustomerCommunicationRepositoryBase.cs" && document.Name != "CommunicationDataManager.cs") continue;
+                            if (Regex.IsMatch(document.FilePath, "reference.cs|Service References|AssemblyInfo.cs", RegexOptions.IgnoreCase)) continue;
+                            var syntaxTree = await document.GetSyntaxTreeAsync().ConfigureAwait(false);
+                            var hasDiagnostics = syntaxTree.GetDiagnostics();
+                            if (hasDiagnostics.Any()) continue; // do some work here to set flags
+                            // this is referenced document in which other/same/from-chain documents method is called.
+                            var refFileMaster = allCsFiles.Find(d => d.FilePath == document.FilePath && d.FileName == Path.GetFileName(document.FilePath));
+                            if (refFileMaster == null) continue;
+                            // var sm = await document.GetSyntaxTreeAsync().ConfigureAwait(false);
+                            // var semantic = compilation.GetSemanticModel(sm);
+                            var invocations = (from d in syntaxTree.GetRoot().DescendantNodes().OfType<InvocationExpressionSyntax>() select d).ToList();
+                            Console.WriteLine($@"=================== {document.FilePath} ===============================");
+                            foreach (var invocation in invocations)
+                            {
+                                var methodSymbol = semantic.GetSymbolInfo(invocation).Symbol; // as IMethodSymbol;
+                                if (methodSymbol == null) continue;
+                                var foundMethodDefs = (from ds in methodSymbol.DeclaringSyntaxReferences let methodDecl = ds.SyntaxTree.GetRoot().DescendantNodes().OfType<MethodDeclarationSyntax>() let methods = methodDecl.Where(md => invocation.Expression.ToString().Split('.').Last() == md.Identifier.ValueText) select methods).ToList();
+                                var foundInFirst = false;
+                                foreach (var foundMethod in foundMethodDefs)
+                                {
+                                    foreach (var fm in foundMethod)
+                                    {
+                                        if (fm.ParameterList.Parameters.Count != invocation.ArgumentList.Arguments.Count) continue;
+                                        // int lineIndex = fm.GetLocation().GetLineSpan().StartLinePosition.Line;
+                                        // var docText = await fm.GetLocation().SourceTree.GetTextAsync().ConfigureAwait(false);
+                                        // string definitionLine = docText.Lines[lineIndex].ToString();
+                                        var doc = projectDocuments.Find(d => d.FilePath == fm.GetLocation().SourceTree.FilePath);
+                                        var heirarchyDoc = heirarchyDetails.KeyValues.Find(d => d.FileId == doc.Id.Id.ToString());
+                                        if (heirarchyDoc != null && heirarchyDoc.Value.Equals(88)) continue;
+                                        var fileName = Path.GetFileNameWithoutExtension(document.FilePath);
+                                        var fileMaster = allCsFiles.Find(d => d.FilePath == document.FilePath && d.FileNameWithoutExt == fileName);
+                                        if (fileMaster == null) continue;
+                                        var mrm = new MethodReferenceMaster
+                                        {
+                                            ProjectId = projectMaster._id,
+                                            MethodName = fm.Identifier.ValueText,
+                                            MethodLocation = fm.GetLocation().GetLineSpan().StartLinePosition.Line + 1,
+                                            InvocationLocation = invocation.GetLocation().GetLineSpan().StartLinePosition.Line + 1,
+                                            InvocationLine = invocation.ToString().Trim().Trim('\r', '\n').Trim(),
+                                            SourceFileName = Path.GetFileName(doc.FilePath),
+                                            ReferencedFileName = Path.GetFileName(document.FilePath),
+                                            SourceFileId = fileMaster._id,
+                                            ReferencedFileId = refFileMaster._id,
+                                            SourceFilePath = doc.FilePath,
+                                            ReferencedFilePath = document.FilePath
+                                        };
+                                        methodReferences.Add(mrm);
+                                        // await methodReferenceMaster.AddDocument(mrm).ConfigureAwait(false);
+
+                                        Console.WriteLine($@"{invocation.Expression}");
+                                        foundInFirst = true;
+                                        break;
+                                    }
+                                    if (foundInFirst) break;
+                                }
+                                if (foundInFirst) continue;
+                                var referencesTo = await SymbolFinder.FindReferencesAsync(methodSymbol, document.Project.Solution).ConfigureAwait(false);
+                                var de = SymbolFinder.FindDeclarationsAsync(document.Project, referencesTo.First().Definition.Name, false, SymbolFilter.Member).ConfigureAwait(false).GetAwaiter().GetResult().ToList();
+                                if (!de.Any()) continue;
+                                // means there might be interface method which is defined in implemented class and inherited chain as well.
+                                var foundRef = false;
+                                de.Reverse(); // TODO: this is not good idea here, but it's OK for now...
+                                foreach (var dSymbol in de)
+                                {
+                                    var objectSymbol = (from ds in dSymbol.DeclaringSyntaxReferences let interfc = ds.SyntaxTree.GetRoot().DescendantNodes().OfType<InterfaceDeclarationSyntax>() where interfc.ToList().Count > 0 select interfc.First()).ToList();
+                                    if (objectSymbol.Any()) continue;
+                                    var foundMethods = (from ds in dSymbol.DeclaringSyntaxReferences let methodDecl = ds.SyntaxTree.GetRoot().DescendantNodes().OfType<MethodDeclarationSyntax>() let methods = methodDecl.Where(md => invocation.Expression.ToString().Split('.').Last() == md.Identifier.ValueText) select methods).ToList();
+                                    foreach (var foundMethod in foundMethods)
+                                    {
+                                        foreach (var fm in foundMethod)
+                                        {
+                                            if (fm.ParameterList.Parameters.Count != invocation.ArgumentList.Arguments.Count) continue;
+                                            // int lineIndex = fm.GetLocation().GetLineSpan().StartLinePosition.Line;
+                                            // var docText = await fm.GetLocation().SourceTree.GetTextAsync().ConfigureAwait(false);
+                                            // string definitionLine = docText.Lines[lineIndex].ToString();
+                                            var doc = projectDocuments.Find(d => d.FilePath == fm.GetLocation().SourceTree.FilePath);
+                                            var heirarchyDoc = heirarchyDetails.KeyValues.Find(d => d.FileId == doc.Id.Id.ToString());
+                                            if (heirarchyDoc != null && heirarchyDoc.Value.Equals(88)) continue;
+
+                                            var fileName = Path.GetFileNameWithoutExtension(document.FilePath);
+                                            var fileMaster = allCsFiles.Find(d => d.FilePath == document.FilePath && d.FileNameWithoutExt == fileName);
+                                            if (fileMaster == null) continue;
+
+                                            var mrm = new MethodReferenceMaster
+                                            {
+                                                ProjectId = projectMaster._id,
+                                                MethodName = fm.Identifier.ValueText,
+                                                MethodLocation = fm.GetLocation().GetLineSpan().StartLinePosition.Line + 1,
+                                                InvocationLocation = invocation.GetLocation().GetLineSpan().StartLinePosition.Line + 1,
+                                                InvocationLine = invocation.ToString().Trim().Trim('\r', '\n').Trim(),
+                                                SourceFileName = Path.GetFileName(doc.FilePath),
+                                                ReferencedFileName = Path.GetFileName(document.FilePath),
+                                                SourceFileId = fileMaster._id,
+                                                ReferencedFileId = refFileMaster._id,
+                                                SourceFilePath = doc.FilePath,
+                                                ReferencedFilePath = document.FilePath
+                                            };
+                                            methodReferences.Add(mrm);
+                                            // await methodReferenceMaster.AddDocument(mrm).ConfigureAwait(false);
+
+                                            Console.WriteLine($@"{invocation.Expression}");
+                                            foundRef = true;
+                                            break;
+                                        }
+                                        if (foundRef) break; // actually not needed, but added for now
+                                    }
+                                    if (foundRef) break;
+                                }
+
+                                Console.WriteLine(@"------------------------------------------------------------------------------");
+                            }
+                        }
+                        Console.WriteLine($@"Total References inserted: {methodReferences.Count}");
+                        var referenceData = JsonConvert.SerializeObject(methodReferences, Formatting.Indented);
+                        var slnFileName = Path.GetFileNameWithoutExtension(solutionFiles.First());
+                        string jsonFile = Path.Combine(slnDirPath, $"{slnFileName}.json");
+                        if (System.IO.File.Exists(jsonFile)) System.IO.File.Delete(jsonFile);
+
+                        System.IO.File.WriteAllText(jsonFile, referenceData);
+
+                    }
+
+                    return Ok($"Reference data has been processed successfully for project: {projectMaster.ProjectName}");
+                }
+                catch (Exception exception)
+                { return StatusCode(500, exception); }
+            }
+        }
+
+        [HttpGet]
         [Route("update-call-externals")]
         public async Task<ActionResult> UpdateCallExternals(string projectId)
         {
@@ -404,7 +431,7 @@ namespace FloKaptureJobProcessingApp.JobControllers
             {
                 foreach (var methodReference in methodReferenceMaster)
                 {
-                    var srm = _floKaptureService.StatementReferenceMasterRepository.GetDocument(d => d.FileId == methodReference.ReferencedFileId && d.LineIndex == methodReference.InvocationLocation - 1);
+                    var srm = _floKaptureService.StatementReferenceMasterRepository.GetDocument(d => d.FileId == methodReference.ReferencedFileId && d.LineIndex == methodReference.InvocationLocation);
                     if (srm == null) continue;
                     if (srm.CallExternals != null) continue;
                     srm.CallExternals = srm.CallExternals ?? new List<CallExternals>();
@@ -423,6 +450,7 @@ namespace FloKaptureJobProcessingApp.JobControllers
                 Console.WriteLine(e);
                 return StatusCode(500, e);
             }
+            /*
             var allCsFiles = _floKaptureService.FileMasterRepository.GetAllListItems(d => d.ProjectId == projectMaster._id).ToList();
             foreach (var fileMaster in allCsFiles)
             {
@@ -451,7 +479,7 @@ namespace FloKaptureJobProcessingApp.JobControllers
                     await _floKaptureService.StatementReferenceMasterRepository.UpdateDocument(statementReference).ConfigureAwait(false);
                 }
             }
-
+            */
             return Ok("Call externals updated successfully.");
         }
 

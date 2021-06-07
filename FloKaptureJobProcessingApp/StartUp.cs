@@ -27,7 +27,8 @@ namespace FloKaptureJobProcessingApp
         {
             Configuration = configuration;
         }
-        public IConfiguration Configuration { get; }
+
+        private IConfiguration Configuration { get; }
         public void ConfigureServices(IServiceCollection services)
         {
             services.Configure<ApiBehaviorOptions>(options =>
@@ -67,7 +68,8 @@ namespace FloKaptureJobProcessingApp
                     defaults: new { id = RouteParameter.Optional, action = RouteParameter.Optional });
             });
         }
-        public void ConfigureJsonOptions(MvcJsonOptions jsonOptions)
+
+        private static void ConfigureJsonOptions(MvcJsonOptions jsonOptions)
         {
             string projectPath = AppDomain.CurrentDomain.BaseDirectory.Split(new[] { @"bin\" }, StringSplitOptions.None).First();
             var configurationRoot = new ConfigurationBuilder().SetBasePath(projectPath).AddJsonFile("appsettings.json").Build();

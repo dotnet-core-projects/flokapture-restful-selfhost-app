@@ -87,7 +87,7 @@ namespace BusinessLayer.CsharpHelpers
         public static List<CsLineDetails> PrepareCsLineDetails(List<string> programLines)
         {
             if (!programLines.Any()) return new List<CsLineDetails>();
-            int indPos = -1;
+            int indPos = 0;
             return programLines.Select(lineDetail => new CsLineDetails
             {
                 LineIndex = ++indPos,

@@ -1,5 +1,4 @@
-﻿using System;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using BusinessLayer.DbEntities;
 using FloKaptureJobProcessingApp.FloKaptureServices;
 using FloKaptureJobProcessingApp.Utils;
@@ -15,7 +14,6 @@ namespace FloKaptureJobProcessingApp.Controllers
         [HttpGet]
         public IActionResult GetStatus()
         {
-            Console.WriteLine(Request);
             string serverPath = ProductHelper.NormalizePath(Request);
             return Ok("API is up and running! " + serverPath);
         }

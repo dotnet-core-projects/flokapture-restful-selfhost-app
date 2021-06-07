@@ -27,7 +27,7 @@ namespace BusinessLayer.CsharpHelpers
             return true;
         }
 
-        protected internal void CleanUpSingleFile(string filePath)
+        private void CleanUpSingleFile(string filePath)
         {
             string programText = File.ReadAllText(filePath);
             var rootTree = CSharpSyntaxTree.ParseText(programText);

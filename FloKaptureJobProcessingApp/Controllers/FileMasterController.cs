@@ -44,10 +44,11 @@ namespace FloKaptureJobProcessingApp.Controllers
             {
                 var fileMaster = _floKaptureService.FileMasterRepository.Aggregate().Limit(10).ToList();
                 Console.WriteLine(fileMaster.Count);
-                // var extRef = generalService.Aggregate().ToList();
-                // var extRef = generalService.ListAllDocuments();
+                var aggregate = generalService.Aggregate().ToList();
+                var listAll = generalService.GetAllListItems();
                 var extRef = generalService.GetAllItems().ToList(); // observer all of 2 above and this statement
-                return Ok(extRef);
+
+                return Ok(new { aggregate, listAll, extRef });
             }
         }
 
