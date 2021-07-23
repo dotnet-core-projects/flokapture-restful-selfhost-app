@@ -8,11 +8,16 @@ using MongoDB.Driver.Core.Events;
 using MongoDB.Driver.Linq;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using MongoDB.Driver.Core.Configuration;
+
 // ReSharper disable StaticMemberInGenericType
 
 namespace BusinessLayer.BaseRepositories
@@ -20,35 +25,33 @@ namespace BusinessLayer.BaseRepositories
     public class BaseRepository<TSource> : MongoCollectionBase<TSource>, IBaseRepository<TSource>, IRepository<TSource>, IDisposable where TSource : EntityBase
     {
         private IntPtr _nativeResource = Marshal.AllocHGlobal(100);
-        public static string ProjectPath = AppDomain.CurrentDomain.BaseDirectory.Split(new[] { @"bin\" }, StringSplitOptions.None).First();
-        public static IConfigurationRoot ConfigurationRoot = new ConfigurationBuilder().SetBasePath(ProjectPath).AddJsonFile("appsettings.json").Build();
+        private static readonly string ProjectPath = AppDomain.CurrentDomain.BaseDirectory!.Split(new[] { @"bin\" }, StringSplitOptions.None).First();
+        private static readonly IConfigurationRoot ConfigurationRoot = new ConfigurationBuilder().SetBasePath(ProjectPath).AddJsonFile("appsettings.json").Build();
         private static readonly string MongoDb = ConfigurationRoot.GetSection("Database:Database").Value;
-        /*
         private static readonly MongoClientSettings ClientSettings = new MongoClientSettings
         {
             Scheme = ConnectionStringScheme.MongoDB,
             ReadEncoding = new UTF8Encoding(),
             Server = new MongoServerAddress(ConfigurationRoot.GetSection("Database:Host").Value, int.Parse(ConfigurationRoot.GetSection("Database:Port").Value)),
-            AllowInsecureTls = true,            
+            AllowInsecureTls = true,
             Credential = MongoCredential.CreateCredential(MongoDb, ConfigurationRoot.GetSection("Database:User").Value, ConfigurationRoot.GetSection("Database:Pwd").Value),
             IPv6 = true,
-            UseTls = true,            
+            UseTls = true,
             SslSettings = new SslSettings
             {
-                CheckCertificateRevocation = false,
-                EnabledSslProtocols = System.Security.Authentication.SslProtocols.Tls12,
-                ClientCertificates = new List<X509Certificate>
-                    {
-                        new X509Certificate(Path.Combine(ProjectPath, "certificates", "device.pfx"), "yogeshs")
-                    }
-            }             
+                ClientCertificates = new[]
+                {
+                    new X509Certificate2(Path.Combine(ProjectPath, "certificates", "mongo-client.pem")),
+                    new X509Certificate2(Path.Combine(ProjectPath, "certificates", "root-ca.pem")),
+                    new X509Certificate2(Path.Combine(ProjectPath, "certificates", "iis-certificate.pfx"), "yogeshs")
+                }
+            }
         };
-        */
-        public static string ConnectionString = $"mongodb://{ConfigurationRoot.GetSection("Database:User").Value}:{ConfigurationRoot.GetSection("Database:Pwd").Value}@{ConfigurationRoot.GetSection("Database:Host").Value}:{int.Parse(ConfigurationRoot.GetSection("Database:Port").Value)}/?ssl=true&sslVerifyCertificate=false";
-        public static MongoClientSettings ClientSettings = MongoClientSettings.FromUrl(new MongoUrl(ConnectionString));
-        public static readonly MongoClient MongoClient = new MongoClient(ClientSettings);
-        public static readonly IMongoDatabase MongoDatabase = MongoClient.GetDatabase(MongoDb);
-        public static IMongoCollection<TSource> MongoCollection = MongoDatabase.GetCollection<TSource>(typeof(TSource).Name);
+        // public static string ConnectionString = $"mongodb://{ConfigurationRoot.GetSection("Database:User").Value}:{ConfigurationRoot.GetSection("Database:Pwd").Value}@{ConfigurationRoot.GetSection("Database:Host").Value}:{int.Parse(ConfigurationRoot.GetSection("Database:Port").Value)}/?tls=true&sslVerifyCertificate=true";
+        // public static MongoClientSettings ClientSettings = MongoClientSettings.FromUrl(new MongoUrl(ConnectionString));
+        private static readonly MongoClient MongoClient = new MongoClient(ClientSettings);
+        private static readonly IMongoDatabase MongoDatabase = MongoClient.GetDatabase(MongoDb);
+        private static readonly IMongoCollection<TSource> MongoCollection = MongoDatabase.GetCollection<TSource>(typeof(TSource).Name);
 
         // If need to compulsory override, then make method as abstract
         public virtual void CreateIndex(IndexKeysDefinitionBuilder<TSource> definitionBuilder)
@@ -57,7 +60,6 @@ namespace BusinessLayer.BaseRepositories
 
         public IMongoCollection<TSource> Collection => MongoCollection;
         // public IMongoCollection<TSource> MongoCollection => MongoDatabase.GetCollection<TSource>(typeof(TSource).Name);
-
         // public IMongoDatabase MongoDatabase => MongoClient.GetDatabase(MongoDb);
 
         public IndexKeysDefinitionBuilder<TSource> IndexKeys => Builders<TSource>.IndexKeys;
@@ -158,7 +160,7 @@ namespace BusinessLayer.BaseRepositories
             return await MongoCollection.DeleteOneAsync(filter).ConfigureAwait(false);
         }
 
-        public virtual T DeleteDocument<T>(string id) 
+        public virtual T DeleteDocument<T>(string id)
         {
             var filter = Builders<T>.Filter.Eq("_id", id);
             return MongoDatabase.GetCollection<T>(typeof(T).Name).FindOneAndDelete(filter);

@@ -54,7 +54,6 @@ namespace BusinessLayer.CsharpHelpers
             var linqQueryExpressions = compilationRoot.DescendantNodes().Where(d => d.IsKind(SyntaxKind.QueryExpression) && d.GetText().Lines.Count >= 2).ToList();
             if (!linqQueryExpressions.Any(d => d.GetText().Lines.Count >= 2)) return programText;
             var firstToModify = linqQueryExpressions.First(d => d.GetText().Lines.Count >= 2);
-            if (firstToModify == null) return programText;
             var textLitLines = firstToModify.GetText();
             if (textLitLines.Lines.Count <= 1) return programText;
             var textLit = textLitLines.ToString();
@@ -170,7 +169,7 @@ namespace BusinessLayer.CsharpHelpers
                     var pList = constructor.ParameterList.Parameters.Select(p => new ParameterDetails
                     {
                         Name = p.Identifier.ValueText,
-                        Type = p.Type.ToString(),
+                        Type = p.Type!.ToString(),
                         IsPredefined = p.Default != null
                     }).ToList();
                     listMethodDetails.Add(new MethodDetails
@@ -197,7 +196,7 @@ namespace BusinessLayer.CsharpHelpers
                     var pList = methodDeclaration.ParameterList.Parameters.Select(p => new ParameterDetails
                     {
                         Name = p.Identifier.ValueText,
-                        Type = p.Type.ToString(),
+                        Type = p.Type!.ToString(),
                         IsPredefined = p.Default != null
                     }).ToList();
                     listMethodDetails.Add(new MethodDetails
@@ -306,12 +305,11 @@ namespace BusinessLayer.CsharpHelpers
                     var commentTrivia = (from t in property.DescendantTrivia()
                                          where t.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia)
                                          select t).ToList();
-                    string docComment = commentTrivia.Any() ? string.Join("", commentTrivia.First().ToString().Split('\n')
-                        .Select(d => d.Replace('\r', ' ').Replace("///", "").Trim()).Where(d => !string.IsNullOrEmpty(d))) : string.Empty;
+                    string docComment = commentTrivia.Any() ? string.Join("", commentTrivia.First().ToString().Split('\n').Select(d => d.Replace('\r', ' ').Replace("///", "").Trim()).Where(d => !string.IsNullOrEmpty(d))) : string.Empty;
 
                     var field = new FieldAndPropertyDetails
                     {
-                        Name = property.Declaration.Variables.First()?.Identifier.ValueText,
+                        Name = property.Declaration.Variables.First().Identifier.ValueText,
                         FieldOrProperty = FieldOrPropertyType.Field,
                         ReturnType = property.Declaration.Type.ToString(),
                         BaseCommandId = 48,

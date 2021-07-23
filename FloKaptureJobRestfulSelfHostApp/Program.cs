@@ -17,12 +17,7 @@ namespace FloKaptureJobRestfulSelfHostApp
         private static void Main()
         {
             Console.WriteLine($@"=======================================================================");
-            Console.WriteLine();
-            var host = new WebHostBuilder()
-                .UseKestrel(options => options.ConfigureEndpoints())
-                .UseStartup<StartUp>()
-                .Build();
-
+            var host = new WebHostBuilder().UseKestrel(options => options.ConfigureEndpoints()).UseStartup<StartUp>().Build();
             host.Run();
         }
     }
@@ -42,7 +37,6 @@ namespace FloKaptureJobRestfulSelfHostApp
                     return endpoint;
                 });
             Console.WriteLine($@"=== Adding configurations for protocols and ports to use. ===");
-            Console.WriteLine();
 
             foreach (var endpoint in endpoints)
             {
