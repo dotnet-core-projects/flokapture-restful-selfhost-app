@@ -7,7 +7,6 @@ using FloKaptureJobProcessingApp;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 // using Microsoft.EntityFrameworkCore.Internal;
 
 namespace FloKaptureJobRestfulSelfHostApp
@@ -25,7 +24,7 @@ namespace FloKaptureJobRestfulSelfHostApp
     {
         public static void ConfigureEndpoints(this KestrelServerOptions options)
         {
-            var environment = options.ApplicationServices.GetRequiredService<IWebHostEnvironment>();
+            // var environment = options.ApplicationServices.GetRequiredService<IWebHostEnvironment>();
             if (AppDomain.CurrentDomain.BaseDirectory == null) return;
             string projectPath = AppDomain.CurrentDomain.BaseDirectory.Split(new[] { @"bin\" }, StringSplitOptions.None).First();
             var configurationRoot = new ConfigurationBuilder().SetBasePath(projectPath).AddJsonFile("appsettings.json").Build();
@@ -77,13 +76,6 @@ namespace FloKaptureJobRestfulSelfHostApp
                 using var x509Store = new X509Store(config.StoreName, Enum.Parse<StoreLocation>(config.StoreLocation));
                 x509Store.Open(OpenFlags.ReadOnly);
                 var certificates = x509Store.Certificates.Find(X509FindType.FindBySubjectName, config.Host, false);
-
-                /*
-                    if (!certificates.Any())
-                    {
-                        throw new InvalidOperationException($"Certificate not found for: {config.Host}.");
-                    }
-                    */
 
                 return certificates.OfType<X509Certificate2>().First();
             }

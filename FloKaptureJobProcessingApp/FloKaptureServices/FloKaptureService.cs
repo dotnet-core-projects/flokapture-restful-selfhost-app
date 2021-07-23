@@ -22,24 +22,15 @@ namespace FloKaptureJobProcessingApp.FloKaptureServices
         private BaseRepository<FileTypeReference> _fileTypeReferenceRepository;
         private BaseRepository<UniVerseDataDictionary> _uniVerseDataDictionaryRepository;
         public IUniVerseBasicUtils UniVerseBasicUtils => new UniVerseBasicUtils();
-        public BaseRepository<UserMaster> UserMasterRepository =>
-            _userMasterRepository ?? (_userMasterRepository = new UserMasterRepository());
-        public BaseRepository<UserDetails> UserDetailsRepository =>
-            _userDetailsRepository ?? (_userDetailsRepository = new UserDetailsRepository());
-        public BaseRepository<LanguageMaster> LanguageMasterRepository =>
-            _languageMasterRepository ?? (_languageMasterRepository = new LanguageMasterRepository());
-        public BaseRepository<ProjectMaster> ProjectMasterRepository =>
-            _projectMasterRepository ?? (_projectMasterRepository = new BaseRepository<ProjectMaster>());
-        public BaseRepository<FileMaster> FileMasterRepository =>
-            _fileMasterRepository ?? (_fileMasterRepository = new FileMasterRepository());
-        public BaseRepository<ActionWorkflows> ActionWorkflowsRepository =>
-            _actionWorkflowsRepository ?? (_actionWorkflowsRepository = new ActionWorkflowsRepository());
-        public StatementReferenceMasterRepository StatementReferenceMasterRepository =>
-            _statementReferenceMasterRepository ?? (_statementReferenceMasterRepository = new StatementReferenceMasterRepository());
-        public BaseRepository<FileTypeReference> FileTypeReferenceRepository =>
-            _fileTypeReferenceRepository ?? (_fileTypeReferenceRepository = new BaseRepository<FileTypeReference>());
-        public BaseRepository<UniVerseDataDictionary> UniVerseDataDictionaryRepository =>
-            _uniVerseDataDictionaryRepository ?? (_uniVerseDataDictionaryRepository = new BaseRepository<UniVerseDataDictionary>());
+        public BaseRepository<UserMaster> UserMasterRepository => _userMasterRepository ??= new UserMasterRepository();
+        public BaseRepository<UserDetails> UserDetailsRepository => _userDetailsRepository ??= new UserDetailsRepository();
+        public BaseRepository<LanguageMaster> LanguageMasterRepository => _languageMasterRepository ??= new LanguageMasterRepository();
+        public BaseRepository<ProjectMaster> ProjectMasterRepository => _projectMasterRepository ??= new BaseRepository<ProjectMaster>();
+        public BaseRepository<FileMaster> FileMasterRepository => _fileMasterRepository ??= new FileMasterRepository();
+        public BaseRepository<ActionWorkflows> ActionWorkflowsRepository => _actionWorkflowsRepository ??= new ActionWorkflowsRepository();
+        public StatementReferenceMasterRepository StatementReferenceMasterRepository => _statementReferenceMasterRepository ??= new StatementReferenceMasterRepository();
+        public BaseRepository<FileTypeReference> FileTypeReferenceRepository => _fileTypeReferenceRepository ??= new BaseRepository<FileTypeReference>();
+        public BaseRepository<UniVerseDataDictionary> UniVerseDataDictionaryRepository => _uniVerseDataDictionaryRepository ??= new BaseRepository<UniVerseDataDictionary>();
         public void Dispose()
         {
             Dispose(true);
