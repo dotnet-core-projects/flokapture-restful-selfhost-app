@@ -97,11 +97,11 @@ namespace BusinessLayer.BaseRepositories
 
         public virtual IAggregateFluent<TSource> Aggregate(params BsonDocument[] bsonDocuments)
         {
-            var asyncCuror = MongoCollection.Aggregate();
-            if (bsonDocuments.Length <= 0) return asyncCuror;
+            var asyncCursor = MongoCollection.Aggregate();
+            if (bsonDocuments.Length <= 0) return asyncCursor;
 
             var lstStages = bsonDocuments.ToList();
-            return asyncCuror.AppendStages(lstStages);
+            return asyncCursor.AppendStages(lstStages);
         }
 
         public virtual IAggregateFluent<TSource> GroupByField(string groupByField)
