@@ -25,12 +25,10 @@ namespace FloKaptureJobProcessingApp
         public void ConfigureServices(IServiceCollection services)
         {
             services.Configure<ApiBehaviorOptions>(options =>
-                {
-                    options.SuppressModelStateInvalidFilter = true;
-                })
-                .AddMvc(d => { d.EnableEndpointRouting = false; })
-                .AddControllersAsServices()
-                .SetCompatibilityVersion(CompatibilityVersion.Latest);
+            {
+                options.SuppressModelStateInvalidFilter = true;
+            }).AddMvc(d => { d.EnableEndpointRouting = false; }).AddControllersAsServices();
+
             services.AddControllers().AddNewtonsoftJson(jsonOptions =>
             {
                 if (AppDomain.CurrentDomain.BaseDirectory == null) return;
